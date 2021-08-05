@@ -9,8 +9,8 @@ import {Shared, Models} from 'lib/K';
   template: `<ag-grid-angular
     class="ag-theme-fresh ag-theme-dark marketTrades"
     style="height: 616px;width: 100%;"
-    (gridReady)="onGridReady()"
     (window:resize)="onGridReady()"
+    (gridReady)="onGridReady()"
     [gridOptions]="grid"></ag-grid-angular>`
 })
 export class TakersComponent {
@@ -24,7 +24,7 @@ export class TakersComponent {
   private grid: GridOptions = <GridOptions>{
     overlayLoadingTemplate: `<span class="ag-overlay-no-rows-center">empty history</span>`,
     overlayNoRowsTemplate: `<span class="ag-overlay-no-rows-center">empty history</span>`,
-    defaultColDef: { sortable: true, resizable: true },
+    defaultColDef: { sortable: true, resizable: true, flex: 1 },
     rowHeight:21,
     columnDefs: [{
       field: 'time',

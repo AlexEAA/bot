@@ -160,12 +160,26 @@ div#hud.bg-danger {
   background-color: #540000
 }
 
-.ag-theme-big {
-  .up-data.ag-cell-data-changed  {
+#portfolios.ag-theme-big {
+  .kira {
+    color: #0d0!important;
+    font-weight: 600;
+  }
+  .ag-cell-data-changed {
+      background-color:transparent !important;
+  }
+  .up-data.ag-cell-data-changed span.val {
       background-color:#006a00 !important;
   }
-  .down-data.ag-cell-data-changed {
+  .down-data.ag-cell-data-changed span.val {
       background-color:#570101 !important;
+  }
+  .ag-body-viewport .ag-row-selected,
+  .ag-body-viewport .ag-row-hover {
+    background: #000!important;
+  }
+  .ag-body-viewport .ag-row-selected .ag-cell .row_title {
+    color: #ff0!important;
   }
 }
 

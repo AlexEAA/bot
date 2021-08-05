@@ -7,24 +7,24 @@ import {Socket, Models} from 'lib/K';
   template: `<div class="row">
       <div class="col-md-12 col-xs-12">
           <div class="row">
-            <h4>SUM: {{ balance }}<i class="beacon-sym-{{ settings.currency.toLowerCase() }}-s"></i></h4>
-            <settings
-              [product]="product"
-              [settings]="settings"></settings>
-          </div>
-          <div class="row">
-            <wallet
-              [asset]="asset"
-              [settings]="settings"
-              (onBalance)="onBalance($event)"></wallet>
+            <div hidden="true">
+              <settings
+                [product]="product"
+                [settings]="settings"></settings>
+            </div>
+            <wallets
+              [wallets]="wallets"
+              [markets]="markets"
+              [settings]="settings"></wallets>
           </div>
       </div>
   </div>`
 })
 export class ClientComponent implements OnInit {
 
-  private asset: any = null;
-  private balance: string = "0";
+  private wallets: any = null;
+
+  private markets: any = null;
 
   private settings: Models.PortfolioParameters = new Models.PortfolioParameters();
 
@@ -40,12 +40,12 @@ export class ClientComponent implements OnInit {
     new Socket.Subscriber(Models.Topics.QuotingParametersChange)
       .registerSubscriber((o: Models.PortfolioParameters) => { this.settings = o; });
 
-    new Socket.Subscriber(Models.Topics.Position)
-      .registerSubscriber((o: any[]) => { this.asset = o; })
-      .registerDisconnectedHandler(() => { this.asset = null; });
-  };
+    new Socket.Subscriber(Models.Topics.MarketData)
+      .registerSubscriber((o: any) => { this.markets = o; })
+      .registerDisconnectedHandler(() => { this.markets = null; });
 
-  private onBalance(o: number) {
-    this.balance = o.toFixed(8);
+    new Socket.Subscriber(Models.Topics.Position)
+      .registerSubscriber((o: any[]) => { this.wallets = o; })
+      .registerDisconnectedHandler(() => { this.wallets = null; });
   };
 };

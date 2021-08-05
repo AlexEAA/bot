@@ -8,9 +8,9 @@ require('highcharts/highcharts-more')(Highcharts);
 export {Highcharts};
 import {HighchartsChartModule} from 'highcharts-angular';
 
-import {ModuleRegistry, ICellRendererParams}       from '@ag-grid-community/core';
-import {ClientSideRowModelModule, GridApi, ColDef} from '@ag-grid-community/all-modules';
-import {AgGridModule}                              from '@ag-grid-community/angular';
+import {ModuleRegistry, ICellRendererParams}                from '@ag-grid-community/core';
+import {ClientSideRowModelModule, GridApi, ColDef, RowNode} from '@ag-grid-community/all-modules';
+import {AgGridModule}                                       from '@ag-grid-community/angular';
 
 import {Socket, Models} from 'lib/K';
 
@@ -20,7 +20,7 @@ import {Socket, Models} from 'lib/K';
     <div [hidden]="state.online !== null"
       style="padding:42px;transform:rotate(-6deg);">
       <h4 class="text-danger text-center">
-        <i class="beacon-exc-{{ exchange_icon }}-s" style="font-size:30px;"></i>
+        <i class="beacon exc-{{ exchange_icon }}-s" style="font-size:30px;"></i>
         <br /><br />
         {{ product.environment ? product.environment+' is d' : 'D' }}isconnected
       </h4>
@@ -203,10 +203,10 @@ export function bytesToSize(input: number, precision: number) {
   if (!input) return '0KB';
   let unit: string[] = ['', 'K', 'M', 'G', 'T', 'P'];
   let index: number = Math.floor(Math.log(input) / Math.log(1024));
-    return index >= unit.length
-      ? input + 'B'
-      : (input / Math.pow(1024, index))
-          .toFixed(precision) + unit[index] + 'B';
+  return index >= unit.length
+    ? input + 'B'
+    : (input / Math.pow(1024, index))
+        .toFixed(precision) + unit[index] + 'B';
 };
 
 export function playAudio(basename: string) {
@@ -222,7 +222,7 @@ function currencyHeaderTemplate(symbol: string) {
       <div ref="eLabel" class="ag-header-cell-label" role="presentation">
           <span>
             <span ref="eText" class="ag-header-cell-text" role="columnheader"></span>
-            <i class="beacon-sym-` + symbol.toLowerCase() + `-s"></i>
+            <i class="beacon sym-` + symbol.toLowerCase() + `-s"></i>
           </span>
           <span ref="eFilter" class="ag-header-icon ag-filter-icon"></span>
           <span ref="eSortOrder" class="ag-header-icon ag-sort-order"></span>
@@ -240,7 +240,8 @@ export function currencyHeaders(api: GridApi, base: string, quote: string) {
     let colDef: ColDef[] = api.getColumnDefs();
 
     colDef.map((o: ColDef)  => {
-      if (['price', 'value', 'Kprice', 'Kvalue', 'delta', 'balance'].indexOf(o.field) > -1)
+      if (['price', 'value',   'Kprice', 'Kvalue',
+           'delta', 'balance', 'spread', 'volume'].indexOf(o.field) > -1)
         o.headerComponentParams = currencyHeaderTemplate(quote);
       else if (['quantity', 'Kqty'].indexOf(o.field) > -1)
         o.headerComponentParams = currencyHeaderTemplate(base);
@@ -248,6 +249,35 @@ export function currencyHeaders(api: GridApi, base: string, quote: string) {
     });
 
     api.setColumnDefs(colDef);
+};
 
-    setTimeout(() => { api.sizeColumnsToFit(); }, 100);
+export function resetRowData(name: string, val: string, node: RowNode): string[] {
+  var dir   = '';
+  var _val  = num(val);
+  var _data = num(node.data[name]);
+  if      (_val > _data) dir = 'up-data';
+  else if (_val < _data) dir = 'down-data';
+  if (dir != '') {
+    node.data['dir_' + name] = dir;
+    node.setDataValue(name, val);
+  }
+  return dir != '' ? [name] : [];
+};
+
+export function str(val: number, decimals: number): string {
+  return val.toLocaleString([].concat(navigator.languages), {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  });
+};
+
+var exp = null;
+export function num(val: string): number {
+  if (exp) return parseFloat(val.replace(exp, ''));
+  exp = new RegExp('[^\\d-' + str(0, 1).replace(/0/g, '') + ']', 'g');
+  return num(val);
+};
+
+export function comparator(valueA, valueB, nodeA, nodeB, isInverted) {
+  return num(valueA) - num(valueB);
 };

@@ -9,8 +9,8 @@ import {Socket, Shared, Models} from 'lib/K';
   template: `<ag-grid-angular
     class="ag-theme-fresh ag-theme-dark"
     style="height: 131px;width: 99.80%;"
-    (gridReady)="onGridReady()"
     (window:resize)="onGridReady()"
+    (gridReady)="onGridReady()"
     (cellClicked)="onCellClicked($event)"
     [gridOptions]="grid"></ag-grid-angular>`
 })
@@ -26,18 +26,16 @@ export class OrdersComponent {
 
   private grid: GridOptions = <GridOptions>{
     suppressNoRowsOverlay: true,
-    defaultColDef: { sortable: true, resizable: true },
+    defaultColDef: { sortable: true, resizable: true, flex: 1 },
     rowHeight:21,
     columnDefs: [{
       width: 30,
       field: "cancel",
       headerName: 'cxl',
       suppressSizeToFit: true,
-      cellRenderer: (params) => {
-        return `<button type="button" class="btn btn-danger btn-xs">
+      cellRenderer: (params) => `<button type="button" class="btn btn-danger btn-xs">
           <span data-action-type="remove"'>&times;</span>
-        </button>`;
-      }
+        </button>`
     }, {
       width: 82,
       field: 'time',
@@ -60,12 +58,11 @@ export class OrdersComponent {
         'sell': 'data.side == "Ask"',
         'buy': 'data.side == "Bid"'
       },
-      cellRenderer: (params) => {
-        return (params.data.pong
-          ? '&lrhar;'
-          : '&rhard;'
-        ) + params.value;
-      }
+      cellRenderer: (params) => (
+        params.data.pong
+          ? '&#10564;'
+          : '&#10140;'
+        ) + params.value
     }, {
       width: 74,
       field: 'price',
@@ -110,11 +107,9 @@ export class OrdersComponent {
       field: 'exchangeId',
       headerName: 'openOrderId',
       suppressSizeToFit: true,
-      cellRenderer: (params) => {
-        return (params.value)
-          ? params.value.toString().split('-')[0]
-          : '';
-      }
+      cellRenderer: (params) => params.value
+        ? params.value.toString().split('-')[0]
+        : ''
     }]
   };
 
@@ -155,6 +150,6 @@ export class OrdersComponent {
 
     this.grid.api.setRowData([]);
 
-    if (add.length) this.grid.api.applyTransaction({add:add});
+    if (add.length) this.grid.api.applyTransaction({add: add});
   };
 };

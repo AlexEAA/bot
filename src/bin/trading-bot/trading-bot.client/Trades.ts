@@ -9,8 +9,8 @@ import {Socket, Shared, Models} from 'lib/K';
   template: `<ag-grid-angular
     class="ag-theme-fresh ag-theme-dark"
     style="height: 479px;width: 99.80%;"
-    (gridReady)="onGridReady()"
     (window:resize)="onGridReady()"
+    (gridReady)="onGridReady()"
     (cellClicked)="onCellClicked($event)"
     [gridOptions]="grid"></ag-grid-angular>`
 })
@@ -41,10 +41,10 @@ export class TradesComponent {
   private grid: GridOptions = <GridOptions>{
     overlayLoadingTemplate: `<span class="ag-overlay-no-rows-center">0 closed orders</span>`,
     overlayNoRowsTemplate: `<span class="ag-overlay-no-rows-center">0 closed orders</span>`,
-    defaultColDef: { sortable: true, resizable: true },
+    defaultColDef: { sortable: true, resizable: true, flex: 1 },
     rowHeight:21,
     animateRows:true,
-    getRowNodeId: function (data) { return data.tradeId; },
+    getRowNodeId: (data) => data.tradeId,
     columnDefs: [{
       width: 30,
       field: 'cancel',
@@ -59,7 +59,7 @@ export class TradesComponent {
       width: 95,
       field:'time',
       sort: 'desc',
-      headerValueGetter:(params) => { return this.headerNameMod + 'time'; },
+      headerValueGetter:(params) => this.headerNameMod + 'time',
       suppressSizeToFit: true,
       comparator: (valueA: number, valueB: number, nodeA: RowNode, nodeB: RowNode, isInverted: boolean) => {
           return (nodeA.data.Ktime||nodeA.data.time) - (nodeB.data.Ktime||nodeB.data.time);
@@ -97,17 +97,15 @@ export class TradesComponent {
       cellClassRules: {
         'sell': 'x == "Ask"',
         'buy': 'x == "Bid"',
-        'kira': 'x == "&lrhar;"'
+        'kira': 'x == "&#10564;"'
       },
-      cellRenderer: (params) => {
-        return params.value === '&lrhar;' ?
-          '<span style="font-size:15px;padding-left:3px;">' + params.value + '</span>'
-          : params.value;
-      }
+      cellRenderer: (params) => params.value === '&#10564;'
+        ? '<span style="font-size:21px;padding-left:3px;font-weight:600;">' + params.value + '</span>'
+        : params.value
     }, {
       width: 80,
       field:'price',
-      headerValueGetter:(params) => { return this.headerNameMod + 'price'; },
+      headerValueGetter:(params) => this.headerNameMod + 'price',
       cellClassRules: {
         'sell': 'data._side == "Ask"',
         'buy': 'data._side == "Bid"'
@@ -115,7 +113,7 @@ export class TradesComponent {
     }, {
       width: 95,
       field:'quantity',
-      headerValueGetter:(params) => { return this.headerNameMod + 'qty'; },
+      headerValueGetter:(params) => this.headerNameMod + 'qty',
       suppressSizeToFit: true,
       cellClassRules: {
         'sell': 'data._side == "Ask"',
@@ -124,7 +122,7 @@ export class TradesComponent {
     }, {
       width: 69,
       field:'value',
-      headerValueGetter:(params) => { return this.headerNameMod + 'value'; },
+      headerValueGetter:(params) => this.headerNameMod + 'value',
       cellClassRules: {
         'sell': 'data._side == "Ask"',
         'buy': 'data._side == "Bid"'
@@ -132,7 +130,7 @@ export class TradesComponent {
     }, {
       width: 75,
       field:'Kvalue',
-      headerName:'⇋value',
+      headerName:'⥄value',
       cellClassRules: {
         'buy': 'data._side == "Ask"',
         'sell': 'data._side == "Bid"'
@@ -140,7 +138,7 @@ export class TradesComponent {
     }, {
       width: 85,
       field:'Kqty',
-      headerName:'⇋qty',
+      headerName:'⥄qty',
       suppressSizeToFit: true,
       cellClassRules: {
         'buy': 'data._side == "Ask"',
@@ -149,7 +147,7 @@ export class TradesComponent {
     }, {
       width: 80,
       field:'Kprice',
-      headerName:'⇋price',
+      headerName:'⥄price',
       cellClassRules: {
         'buy': 'data._side == "Ask"',
         'sell': 'data._side == "Bid"'
@@ -159,13 +157,11 @@ export class TradesComponent {
       field:'delta',
       headerName:'delta',
       cellClassRules: {
-        'kira': 'data.side == "&lrhar;"'
+        'kira': 'data.side == "&#10564;"'
       },
-      cellRenderer: (params) => {
-        return params.value
-          ? parseFloat(params.value.toFixed(8))
-          : '';
-      }
+      cellRenderer: (params) => params.value
+        ? parseFloat(params.value.toFixed(8))
+        : ''
     }]
   };
 
@@ -183,7 +179,7 @@ export class TradesComponent {
 
     this.hasPongs = (o.safety === Models.QuotingSafety.Boomerang || o.safety === Models.QuotingSafety.AK47);
 
-    this.headerNameMod = this.hasPongs ? "⇁" : "";
+    this.headerNameMod = this.hasPongs ? "➜" : "";
 
     if (!this.grid.api) return;
 
@@ -194,8 +190,6 @@ export class TradesComponent {
     });
 
     this.grid.api.refreshHeader();
-
-    this.grid.api.sizeColumnsToFit();
 
     this.emitLengths();
   };
@@ -219,7 +213,7 @@ export class TradesComponent {
           Kprice: o.Kprice ? o.Kprice.toFixed(this.product.tickPrice) : '',
           Kvalue: o.Kvalue ? o.Kvalue.toFixed(this.product.tickPrice) : '',
           delta: o.delta,
-          side: o.Kqty >= o.quantity ? '&lrhar;' : (o.side === Models.Side.Ask ? "Ask" : "Bid"),
+          side: o.Kqty >= o.quantity ? '&#10564;' : (o.side === Models.Side.Ask ? "Ask" : "Bid"),
           _side: o.side === Models.Side.Ask ? "Ask" : "Bid",
         };
 

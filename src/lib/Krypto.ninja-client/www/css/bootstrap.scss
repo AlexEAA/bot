@@ -1865,11 +1865,6 @@ textarea.form-group-sm .form-control, select[multiple].form-group-sm .form-contr
   border-radius: 6px;
 }
 
-select.input-lg {
-  height: 41px;
-  line-height: 41px;
-}
-
 textarea.input-lg, select[multiple].input-lg {
   height: auto;
 }
@@ -5206,19 +5201,81 @@ div.ag-header-cell .ag-header-cell-label i {
     margin-left: 2px;
 }
 
-.ag-theme-big {
+#zeroed_checkbox {
+  zoom: 200%;
+  margin-top: 0px;
+  position: absolute;
+  top: 2px;
+  right: 4px;
+}
+
+#base_select{
+  width: 121px;
+  margin-top: -1px;
+  height: 26px;
+  font-size: 19px;
+}
+
+#portfolios.ag-theme-big {
   div.ag-row {
     font-size: 21px !important;
   }
-  div.ag-row i {
+  div.ag-row .row_title i {
     font-size: 25px;
     vertical-align: text-top;
   }
-  .up-data.ag-cell-data-changed  {
+  .ag-cell-data-changed {
+      background-color:transparent !important;
+  }
+  .up-data.ag-cell-data-changed span.val {
       background-color:#cec !important;
   }
-  .down-data.ag-cell-data-changed {
+  .down-data.ag-cell-data-changed span.val {
       background-color:#ecc !important;
+  }
+  .ag-body-viewport .ag-row-selected,
+  .ag-body-viewport .ag-row-hover {
+    background: #d4d4d4!important;
+  }
+  .balance_percent {
+    font-size: 15px;
+    width: 60px;
+    display: inline-block;
+  }
+  .ag-row-pinned .balance_percent::after {
+    content: "";
+  }
+  .open_percent::after,
+  .balance_percent::after {
+    content: "%";
+  }
+  .ag-body-viewport .ag-row-selected .ag-cell .row_title {
+    font-weight: 600!important;
+  }
+  .ag-root,
+  .ag-root-wrapper,
+  .ag-body-viewport,
+  .ag-center-cols-clipper,
+  .ag-center-cols-viewport {
+    overflow:visible;
+  }
+  .ag-floating-top {
+    overflow-y: hidden!important;
+  }
+  .ag-has-focus .ag-cell-focus {
+    border-right: dotted grey!important;
+    border-bottom-color: transparent!important;
+    border-right-width: 1px!important;
+    border-left: 1px transparent solid!important;
+    border-top-color: transparent!important;
+    padding-top: 5px!important;
+  }
+  .ag-cell {
+    height: 34px!important;
+  }
+  .ag-has-focus .ag-row-pinned .ag-cell-focus {
+    padding-top:5px !important;
+    border:1px transparent solid!important;
   }
   .ag-cell,
   .ag-full-width-row .ag-cell-wrapper.ag-row-group {
