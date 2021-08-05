@@ -4,7 +4,7 @@ RUN apt-get update \
  && apt-get install --no-install-recommends -y git sudo
 
 # Feel free to choose the branch you want to build:
-RUN git clone -b master https://github.com/ctubio/Krypto-trading-bot.git /K
+RUN git clone -b main https://github.com/AlexEAA/bot.git /K
 
 WORKDIR /K
 
