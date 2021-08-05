@@ -1,19 +1,15 @@
-SCENARIO_METHOD(TradingBot, "ANY BTC/EUR") {
-  gateway = Gw::new_Gw("ANY");
-  gateway->exchange  = "ANY";
-  gateway->base      = "BTC";
-  gateway->quote     = "EUR";
-  gateway->tickPrice =
-  gateway->tickSize  =
-  gateway->minSize   = 1e-2;
-  gateway->decimal.price.precision(gateway->tickPrice);
-  gateway->decimal.amount.precision(gateway->tickSize);
+SCENARIO_METHOD(TradingBot, "NULL BTC/EUR") {
+  gateway = Gw::new_Gw("NULL");
+  gateway->exchange = "NULL";
+  gateway->base     = "BTC";
+  gateway->quote    = "EUR";
+  gateway->handshake(true);
   GIVEN("MarketLevels") {
     WHEN("defaults") {
       THEN("fair value") {
         REQUIRE_FALSE(engine.levels.fairValue);
-        REQUIRE_NOTHROW(engine.levels.fairPrice.read = [&]() {
-          REQUIRE(engine.levels.fairPrice.blob().dump() == "{\"price\":0.0}");
+        REQUIRE_NOTHROW(engine.levels.stats.fairPrice.read = [&]() {
+          REQUIRE(engine.levels.stats.fairPrice.blob().dump() == "{\"price\":0.0}");
         });
         REQUIRE_FALSE(engine.levels.ready());
         REQUIRE_FALSE(engine.levels.fairValue);
@@ -28,8 +24,8 @@ SCENARIO_METHOD(TradingBot, "ANY BTC/EUR") {
           "\"bids\":[{\"price\":1234.5,\"size\":0.12345678},{\"price\":1234.55,\"size\":0.01234567}]"
         "}");
       });
-      REQUIRE_NOTHROW(engine.levels.fairPrice.read = [&]() {
-        REQUIRE(engine.levels.fairPrice.blob().dump() == "{\"price\":1234.55}");
+      REQUIRE_NOTHROW(engine.levels.stats.fairPrice.read = [&]() {
+        REQUIRE(engine.levels.stats.fairPrice.blob().dump() == "{\"price\":1234.55}");
       });
       REQUIRE_NOTHROW(engine.qp.fvModel = tribeca::FairValueModel::BBO);
       vector<string> randIds;
@@ -70,7 +66,7 @@ SCENARIO_METHOD(TradingBot, "ANY BTC/EUR") {
         REQUIRE(engine.levels.unfiltered.asks[1].size  == 0.11234569);
       }
       THEN("fair value") {
-        REQUIRE_NOTHROW(engine.levels.fairPrice.read = []() {
+        REQUIRE_NOTHROW(engine.levels.stats.fairPrice.read = []() {
           FAIL("broadcast() while filtering");
         });
         REQUIRE(engine.levels.ready());
@@ -78,7 +74,7 @@ SCENARIO_METHOD(TradingBot, "ANY BTC/EUR") {
       }
       THEN("fair value weight") {
         REQUIRE_NOTHROW(engine.qp.fvModel = tribeca::FairValueModel::wBBO);
-        REQUIRE_NOTHROW(engine.levels.fairPrice.read = [&]() {
+        REQUIRE_NOTHROW(engine.levels.stats.fairPrice.read = [&]() {
           FAIL("broadcast() while filtering");
         });
         REQUIRE(engine.levels.ready());
@@ -86,7 +82,7 @@ SCENARIO_METHOD(TradingBot, "ANY BTC/EUR") {
       }
       THEN("fair value reversed weight") {
         REQUIRE_NOTHROW(engine.qp.fvModel = tribeca::FairValueModel::rwBBO);
-        REQUIRE_NOTHROW(engine.levels.fairPrice.read = [&]() {
+        REQUIRE_NOTHROW(engine.levels.stats.fairPrice.read = [&]() {
           FAIL("broadcast() while filtering");
         });
         REQUIRE(engine.levels.ready());
@@ -108,8 +104,8 @@ SCENARIO_METHOD(TradingBot, "ANY BTC/EUR") {
               "\"diff\":true"
             "}");
           });
-          REQUIRE_NOTHROW(engine.levels.fairPrice.read = [&]() {
-            REQUIRE(engine.levels.fairPrice.blob().dump() == "{\"price\":1234.5}");
+          REQUIRE_NOTHROW(engine.levels.stats.fairPrice.read = [&]() {
+            REQUIRE(engine.levels.stats.fairPrice.blob().dump() == "{\"price\":1234.5}");
           });
           REQUIRE_NOTHROW(engine.levels.read_from_gw({
             { {1234.40, 0.12345678}, {1234.55, 0.01234567} },
@@ -200,8 +196,8 @@ SCENARIO_METHOD(TradingBot, "ANY BTC/EUR") {
     });
 
     WHEN("calcSizes") {
-      REQUIRE_NOTHROW(engine.wallet.base = {1.0, 0});
-      REQUIRE_NOTHROW(engine.wallet.quote = {1000.0, 0});
+      REQUIRE_NOTHROW(Wallet::reset(1.0, 0, &engine.wallet.base));
+      REQUIRE_NOTHROW(Wallet::reset(1000.0, 0, &engine.wallet.quote));
       REQUIRE_NOTHROW(engine.levels.fairValue = 500.0);
       REQUIRE_NOTHROW(engine.wallet.base.value = 3.0);
       REQUIRE_NOTHROW(engine.qp.percentageValues = true);
@@ -395,7 +391,7 @@ SCENARIO_METHOD(TradingBot, "ANY BTC/EUR") {
     REQUIRE_NOTHROW(engine.qp.protectionEwmaWidthPing = false);
     REQUIRE_NOTHROW(engine.qp.targetBasePosition = 1);
     REQUIRE_NOTHROW(engine.qp.positionDivergence = 1);
-    REQUIRE_NOTHROW(engine.qp.read = engine.levels.diff.read = engine.levels.fairPrice.read = engine.wallet.read = engine.wallet.safety.read = engine.wallet.target.read = engine.broker.calculon.read = engine.broker.semaphore.read = [&]() {
+    REQUIRE_NOTHROW(engine.qp.read = engine.levels.diff.read = engine.levels.stats.fairPrice.read = engine.wallet.read = engine.wallet.safety.read = engine.wallet.target.read = engine.broker.calculon.read = engine.broker.semaphore.read = [&]() {
       INFO("read()");
     });
     REQUIRE_NOTHROW(engine.qp.Backup::push = engine.wallet.target.Backup::push = engine.wallet.profits.Backup::push = [&]() {
@@ -405,8 +401,10 @@ SCENARIO_METHOD(TradingBot, "ANY BTC/EUR") {
       Connectivity::Disconnected
     ));
     REQUIRE_NOTHROW(engine.levels.fairValue = 500);
-    REQUIRE_NOTHROW(engine.wallet.read_from_gw({1,    0, "BTC"}));
-    REQUIRE_NOTHROW(engine.wallet.read_from_gw({1000, 0, "EUR"}));
+    REQUIRE_NOTHROW(engine.wallet.read_from_gw({
+      {"BTC", 1,    0},
+      {"EUR", 1000, 0}
+    }));
     WHEN("assigned") {
       for (Order *const it : engine.orders.working())
         engine.orders.purge(it);
@@ -441,11 +439,11 @@ SCENARIO_METHOD(TradingBot, "ANY BTC/EUR") {
       THEN("to json") {
         REQUIRE(string::npos == engine.orders.blob().dump().find("\"status\":0"));
         REQUIRE(string::npos == engine.orders.blob().dump().find("\"status\":2"));
-        REQUIRE(string::npos != engine.orders.blob().dump().find("{\"exchangeId\":\"\",\"isPong\":false,\"latency\":69,\"orderId\":\"" + randIds[0] + "\",\"price\":1234.5,\"quantity\":0.12345678,\"side\":0,\"status\":1,\"time\":" + to_string(time) + ",\"timeInForce\":0,\"type\":0}"));
-        REQUIRE(string::npos != engine.orders.blob().dump().find("{\"exchangeId\":\"\",\"isPong\":false,\"latency\":69,\"orderId\":\"" + randIds[1] + "\",\"price\":1234.51,\"quantity\":0.12345679,\"side\":0,\"status\":1,\"time\":" + to_string(time) + ",\"timeInForce\":0,\"type\":0}"));
-        REQUIRE(string::npos != engine.orders.blob().dump().find("{\"exchangeId\":\"\",\"isPong\":false,\"latency\":69,\"orderId\":\"" + randIds[2] + "\",\"price\":1234.52,\"quantity\":0.1234568,\"side\":0,\"status\":1,\"time\":" + to_string(time) + ",\"timeInForce\":0,\"type\":0}"));
-        REQUIRE(string::npos != engine.orders.blob().dump().find("{\"exchangeId\":\"\",\"isPong\":false,\"latency\":69,\"orderId\":\"" + randIds[3] + "\",\"price\":1234.5,\"quantity\":0.12345678,\"side\":1,\"status\":1,\"time\":" + to_string(time) + ",\"timeInForce\":0,\"type\":0}"));
-        REQUIRE(string::npos != engine.orders.blob().dump().find("{\"exchangeId\":\"\",\"isPong\":false,\"latency\":69,\"orderId\":\"" + randIds[4] + "\",\"price\":1234.51,\"quantity\":0.12345679,\"side\":1,\"status\":1,\"time\":" + to_string(time) + ",\"timeInForce\":0,\"type\":0}"));
+        REQUIRE(string::npos != engine.orders.blob().dump().find("{\"exchangeId\":\"\",\"isPong\":false,\"latency\":69,\"orderId\":\"" + randIds[0] + "\",\"postOnly\":true,\"price\":1234.5,\"quantity\":0.12345678,\"side\":0,\"status\":1,\"time\":" + to_string(time) + ",\"timeInForce\":0,\"type\":0}"));
+        REQUIRE(string::npos != engine.orders.blob().dump().find("{\"exchangeId\":\"\",\"isPong\":false,\"latency\":69,\"orderId\":\"" + randIds[1] + "\",\"postOnly\":true,\"price\":1234.51,\"quantity\":0.12345679,\"side\":0,\"status\":1,\"time\":" + to_string(time) + ",\"timeInForce\":0,\"type\":0}"));
+        REQUIRE(string::npos != engine.orders.blob().dump().find("{\"exchangeId\":\"\",\"isPong\":false,\"latency\":69,\"orderId\":\"" + randIds[2] + "\",\"postOnly\":true,\"price\":1234.52,\"quantity\":0.1234568,\"side\":0,\"status\":1,\"time\":" + to_string(time) + ",\"timeInForce\":0,\"type\":0}"));
+        REQUIRE(string::npos != engine.orders.blob().dump().find("{\"exchangeId\":\"\",\"isPong\":false,\"latency\":69,\"orderId\":\"" + randIds[3] + "\",\"postOnly\":true,\"price\":1234.5,\"quantity\":0.12345678,\"side\":1,\"status\":1,\"time\":" + to_string(time) + ",\"timeInForce\":0,\"type\":0}"));
+        REQUIRE(string::npos != engine.orders.blob().dump().find("{\"exchangeId\":\"\",\"isPong\":false,\"latency\":69,\"orderId\":\"" + randIds[4] + "\",\"postOnly\":true,\"price\":1234.51,\"quantity\":0.12345679,\"side\":1,\"status\":1,\"time\":" + to_string(time) + ",\"timeInForce\":0,\"type\":0}"));
       }
     }
     WHEN("ready") {
@@ -480,11 +478,15 @@ SCENARIO_METHOD(TradingBot, "ANY BTC/EUR") {
       } }));
       REQUIRE(engine.levels.fairValue == 700);
       REQUIRE(engine.levels.ready());
-      REQUIRE_NOTHROW(engine.wallet.read_from_gw({0, 0, "BTC"}));
-      REQUIRE_NOTHROW(engine.wallet.read_from_gw({0, 0, "EUR"}));
+      REQUIRE_NOTHROW(engine.wallet.read_from_gw({
+        {"BTC", 0, 0},
+        {"EUR", 0, 0}
+      }));
       REQUIRE_FALSE(engine.wallet.ready());
-      REQUIRE_NOTHROW(engine.wallet.read_from_gw({1,    0, "BTC"}));
-      REQUIRE_NOTHROW(engine.wallet.read_from_gw({1000, 0, "EUR"}));
+      REQUIRE_NOTHROW(engine.wallet.read_from_gw({
+        {"BTC", 1,    0},
+        {"EUR", 1000, 0}
+      }));
       REQUIRE_NOTHROW(engine.wallet.safety.timer_1s());
       REQUIRE(engine.wallet.ready());
       REQUIRE_NOTHROW(engine.broker.calcQuotes());
@@ -581,7 +583,7 @@ SCENARIO_METHOD(TradingBot, "ANY BTC/EUR") {
   }
 
   GIVEN("Issue #909 Corrupt Tradehistory Found") {
-    engine.qp.click(R"({"aggressivePositionRebalancing":1,"aprMultiplier":3.0,"audio":false,"autoPositionMode":0,"bestWidth":true,"bestWidthSize":0.0,"bullets":2,"buySize":0.02,"buySizeMax":false,"buySizePercentage":1.0,"cancelOrdersAuto":false,"cleanPongsAuto":0.0,"delayUI":3,"ewmaSensiblityPercentage":0.5,"extraShortEwmaPeriods":12,"fvModel":0,"lifetime":0,"localBalance":true,"longEwmaPeriods":200,"mediumEwmaPeriods":100,"mode":0,"percentageValues":true,"pingAt":0,"pongAt":1,"positionDivergence":0.9,"positionDivergenceMin":0.4,"positionDivergenceMode":0,"positionDivergencePercentage":50.0,"positionDivergencePercentageMin":10.0,"profitHourInterval":72.0,"protectionEwmaPeriods":5,"protectionEwmaQuotePrice":false,"protectionEwmaWidthPing":false,"quotingEwmaTrendProtection":false,"quotingEwmaTrendThreshold":2.0,"quotingStdevBollingerBands":false,"quotingStdevProtection":0,"quotingStdevProtectionFactor":1.0,"quotingStdevProtectionPeriods":1200,"range":0.5,"rangePercentage":5.0,"safety":3,"sellSize":0.01,"sellSizeMax":false,"sellSizePercentage":1.0,"shortEwmaPeriods":50,"sopSizeMultiplier":2.0,"sopTradesMultiplier":2.0,"sopWidthMultiplier":2.0,"superTrades":0,"targetBasePosition":1.0,"targetBasePositionPercentage":50.0,"tradeRateSeconds":3,"tradesPerMinute":1,"ultraShortEwmaPeriods":3,"veryLongEwmaPeriods":400,"widthPercentage":false,"widthPing":0.01,"widthPingPercentage":0.25,"widthPong":0.01,"widthPongPercentage":0.25})"_json);
+    engine.qp.click(R"({"aggressivePositionRebalancing":1,"aprMultiplier":3.0,"audio":false,"autoPositionMode":0,"bestWidth":true,"bestWidthSize":0.0,"bullets":2,"buySize":0.02,"buySizeMax":false,"buySizePercentage":1.0,"cancelOrdersAuto":false,"cleanPongsAuto":0.0,"delayUI":3,"ewmaSensiblityPercentage":0.5,"extraShortEwmaPeriods":12,"fvModel":0,"localBalance":true,"longEwmaPeriods":200,"mediumEwmaPeriods":100,"mode":0,"percentageValues":true,"pingAt":0,"pongAt":1,"positionDivergence":0.9,"positionDivergenceMin":0.4,"positionDivergenceMode":0,"positionDivergencePercentage":50.0,"positionDivergencePercentageMin":10.0,"profitHourInterval":72.0,"protectionEwmaPeriods":5,"protectionEwmaQuotePrice":false,"protectionEwmaWidthPing":false,"quotingEwmaTrendProtection":false,"quotingEwmaTrendThreshold":2.0,"quotingStdevBollingerBands":false,"quotingStdevProtection":0,"quotingStdevProtectionFactor":1.0,"quotingStdevProtectionPeriods":1200,"range":0.5,"rangePercentage":5.0,"safety":3,"sellSize":0.01,"sellSizeMax":false,"sellSizePercentage":1.0,"shortEwmaPeriods":50,"sopSizeMultiplier":2.0,"sopTradesMultiplier":2.0,"sopWidthMultiplier":2.0,"superTrades":0,"targetBasePosition":1.0,"targetBasePositionPercentage":50.0,"tradeRateSeconds":3,"tradesPerMinute":1,"ultraShortEwmaPeriods":3,"veryLongEwmaPeriods":400,"widthPercentage":false,"widthPing":0.01,"widthPingPercentage":0.25,"widthPong":0.01,"widthPongPercentage":0.25})"_json);
     REQUIRE_NOTHROW(engine.wallet.safety.trades.Backup::push = [&]() {
       INFO("push()");
     });
@@ -598,17 +600,17 @@ SCENARIO_METHOD(TradingBot, "ANY BTC/EUR") {
       return order;
     };
     vector<tribeca::LastOrder> loglines({
-      parseTrade("03/30 07:10:34.800532 GW COINBASE PING TRADE BUY  0.03538069 BTC at price 141.31 EUR (value 4.99 EUR)."),
-      parseTrade("03/30 07:12:10.769009 GW COINBASE PONG TRADE SELL 0.03241380 BTC at price 141.40 EUR (value 4.58 EUR)."),
-      parseTrade("03/30 07:12:10.786990 GW COINBASE PONG TRADE SELL 0.00295204 BTC at price 141.40 EUR (value 0.41 EUR)."),
-      parseTrade("03/30 07:25:49.333540 GW COINBASE PING TRADE BUY  0.03528853 BTC at price 141.60 EUR (value 4.99 EUR)."),
-      parseTrade("03/30 07:25:50.787607 GW COINBASE PONG TRADE SELL 0.03528853 BTC at price 141.66 EUR (value 4.99 EUR)."),
-      parseTrade("03/30 07:38:07.369008 GW COINBASE PING TRADE BUY  0.03528867 BTC at price 141.66 EUR (value 4.99 EUR)."),
-      parseTrade("03/30 07:38:34.268582 GW COINBASE PONG TRADE SELL 0.03529119 BTC at price 141.68 EUR (value 5.00 EUR)."),
-      parseTrade("03/30 07:43:02.229028 GW COINBASE PING TRADE BUY  0.03528870 BTC at price 141.63 EUR (value 4.99 EUR)."),
-      parseTrade("03/30 07:45:22.735730 GW COINBASE PING TRADE SELL 0.03530102 BTC at price 141.55 EUR (value 4.99 EUR)."),
-      parseTrade("03/30 08:14:52.978466 GW COINBASE PING TRADE BUY  0.03512242 BTC at price 142.28 EUR (value 4.99 EUR)."),
-      parseTrade("03/30 08:15:13.002363 GW COINBASE PING TRADE BUY  0.03515685 BTC at price 142.22 EUR (value 5.00 EUR).")
+        parseTrade("03/30 07:10:34.800532 GW COINBASE PING TRADE BUY  0.03538069 BTC at price 141.31 EUR (value 4.99 EUR)."),
+        parseTrade("03/30 07:12:10.769009 GW COINBASE PONG TRADE SELL 0.03241380 BTC at price 141.40 EUR (value 4.58 EUR)."),
+        parseTrade("03/30 07:12:10.786990 GW COINBASE PONG TRADE SELL 0.00295204 BTC at price 141.40 EUR (value 0.41 EUR)."),
+        parseTrade("03/30 07:25:49.333540 GW COINBASE PING TRADE BUY  0.03528853 BTC at price 141.60 EUR (value 4.99 EUR)."),
+        parseTrade("03/30 07:25:50.787607 GW COINBASE PONG TRADE SELL 0.03528853 BTC at price 141.66 EUR (value 4.99 EUR)."),
+        parseTrade("03/30 07:38:07.369008 GW COINBASE PING TRADE BUY  0.03528867 BTC at price 141.66 EUR (value 4.99 EUR)."),
+        parseTrade("03/30 07:38:34.268582 GW COINBASE PONG TRADE SELL 0.03529119 BTC at price 141.68 EUR (value 5.00 EUR)."),
+        parseTrade("03/30 07:43:02.229028 GW COINBASE PING TRADE BUY  0.03528870 BTC at price 141.63 EUR (value 4.99 EUR)."),
+        parseTrade("03/30 07:45:22.735730 GW COINBASE PING TRADE SELL 0.03530102 BTC at price 141.55 EUR (value 4.99 EUR)."),
+        parseTrade("03/30 08:14:52.978466 GW COINBASE PING TRADE BUY  0.03512242 BTC at price 142.28 EUR (value 4.99 EUR)."),
+        parseTrade("03/30 08:15:13.002363 GW COINBASE PING TRADE BUY  0.03515685 BTC at price 142.22 EUR (value 5.00 EUR).")
     });
     Amount expectedBaseDelta = 0;
     Amount expectedQuoteDelta = 0;
@@ -622,22 +624,22 @@ SCENARIO_METHOD(TradingBot, "ANY BTC/EUR") {
         engine.wallet.safety.trades.insert(order);
         Amount actualBaseDelta = 0;
         Amount actualQuoteDelta = 0;
-        Amount expectedDelta = 0;
-        Amount actualDelta = 0;
+        Amount expectedDiff = 0;
+        Amount actualDiff = 0;
         for (const auto &trade : engine.wallet.safety.trades) {
           baseSign = (trade.side == Side::Bid) ? 1 : -1;
           actualBaseDelta += baseSign * (trade.quantity - trade.Kqty);
-          Amount delta = baseSign * (trade.Kvalue - trade.value);
-          actualQuoteDelta += delta;
-          if (trade.delta) {
-            actualDelta += delta;
-            expectedDelta += trade.delta;
-            REQUIRE(trade.delta > 0);
+          Amount diff = baseSign * (trade.Kvalue - trade.value);
+          actualQuoteDelta += diff;
+          if (trade.Kdiff) {
+            actualDiff += diff;
+            expectedDiff += trade.Kdiff;
+            REQUIRE(trade.Kdiff > 0);
           }
         }
         REQUIRE(abs(actualBaseDelta - expectedBaseDelta) < 0.000000000001);
         REQUIRE(abs(actualQuoteDelta - expectedQuoteDelta) < 0.000000000001);
-        REQUIRE(abs(actualDelta - expectedDelta) < 0.000000000001);
+        REQUIRE(abs(actualDiff - expectedDiff) < 0.000000000001);
       }
     }
   }

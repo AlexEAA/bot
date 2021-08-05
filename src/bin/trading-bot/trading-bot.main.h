@@ -1,12 +1,10 @@
 extern const char _file_html_index,     _file_ico_favicon,     _file_css_base,
                   _file_gzip_bomb,      _file_mp3_audio_0,     _file_css_light,
-                  _file_js_client,      _file_mp3_audio_1,     _file_css_dark,
-                  _file_woff2_font;
+                  _file_js_client,      _file_mp3_audio_1,     _file_css_dark;
 
 extern const  int _file_html_index_len, _file_ico_favicon_len, _file_css_base_len,
                   _file_gzip_bomb_len,  _file_mp3_audio_0_len, _file_css_light_len,
-                  _file_js_client_len,  _file_mp3_audio_1_len, _file_css_dark_len,
-                  _file_woff2_font_len;
+                  _file_js_client_len,  _file_mp3_audio_1_len, _file_css_dark_len;
 
 class TradingBot: public KryptoNinja {
   public:
@@ -16,14 +14,14 @@ class TradingBot: public KryptoNinja {
       : engine(*this)
     {
       display   = {terminal, {3, 6, 1, 2}};
+      databases = true;
       events    = {
         [&](const Connectivity &rawdata) { engine.read(rawdata);  },
-        [&](const Wallet       &rawdata) { engine.read(rawdata);  },
+        [&](const Wallets      &rawdata) { engine.read(rawdata);  },
         [&](const Levels       &rawdata) { engine.read(rawdata);  },
         [&](const Order        &rawdata) { engine.read(rawdata);  },
         [&](const Trade        &rawdata) { engine.read(rawdata);  },
-        [&](const unsigned int &tick)    { engine.timer_1s(tick); },
-        [&]()                            { engine.quit();         }
+        [&](const unsigned int &tick)    { engine.timer_1s(tick); }
       };
       documents = {
         {"",                                  {&_file_gzip_bomb,   _file_gzip_bomb_len  }},
@@ -32,27 +30,32 @@ class TradingBot: public KryptoNinja {
         {"/css/bootstrap.min.css",            {&_file_css_base,    _file_css_base_len   }},
         {"/css/bootstrap-theme-dark.min.css", {&_file_css_dark,    _file_css_dark_len   }},
         {"/css/bootstrap-theme.min.css",      {&_file_css_light,   _file_css_light_len  }},
-        {"/font/beacons.woff2",               {&_file_woff2_font,  _file_woff2_font_len }},
         {"/favicon.ico",                      {&_file_ico_favicon, _file_ico_favicon_len}},
         {"/audio/0.mp3",                      {&_file_mp3_audio_0, _file_mp3_audio_0_len}},
         {"/audio/1.mp3",                      {&_file_mp3_audio_1, _file_mp3_audio_1_len}}
       };
       arguments = {
         {
-          {"maker-fee",    "AMOUNT", "0",     "set custom percentage of maker fee, like '0.1'"},
-          {"taker-fee",    "AMOUNT", "0",     "set custom percentage of taker fee, like '0.1'"},
-          {"min-size",     "AMOUNT", "0",     "set custom minimum order size, like '0.01'"},
-          {"leverage",     "AMOUNT", "1",     "set between '0.01' and '100' to enable isolated margin,"
-                                              "\n" "or use '0' for cross margin; default AMOUNT is '1'"},
-          {"wallet-limit", "AMOUNT", "0",     "set AMOUNT in base currency to limit the balance,"
-                                              "\n" "otherwise the full available balance can be used"},
-          {"debug-wallet", "1",      nullptr, "print detailed output about target base position"}
+          {"wallet-limit", "AMOUNT", "0",                    "set AMOUNT in base currency to limit the balance,"
+                                                             "\n" "otherwise the full available balance can be used"},
+          {"lifetime",     "NUMBER", "0",                    "set NUMBER of minimum milliseconds to keep orders open,"
+                                                             "\n" "otherwise open orders can be replaced anytime required"},
+          {"matryoshka",   "URL",    "https://example.com/", "set Matryoshka link URL of the next UI"},
+          {"ignore-sun",   "2",      nullptr,                "do not switch UI to light theme on daylight"},
+          {"ignore-moon",  "1",      nullptr,                "do not switch UI to dark theme on moonlight"},
+          {"debug-orders", "1",      nullptr,                "print detailed output about exchange messages"},
+          {"debug-quotes", "1",      nullptr,                "print detailed output about quoting engine"},
+          {"debug-wallet", "1",      nullptr,                "print detailed output about target base position"}
         },
         [&](MutableUserArguments &args) {
           if (arg<int>("debug"))
+            args["debug-orders"] =
+            args["debug-quotes"] =
             args["debug-wallet"] = 1;
           if (arg<int>("ignore-moon") and arg<int>("ignore-sun"))
-            error("CF", "Invalid use of --ignore-moon and --ignore-sun together");
+            args["ignore-moon"] = 0;
+          if (arg<int>("debug-orders") or arg<int>("debug-quotes"))
+            args["naked"] = 1;
         }
       };
     };

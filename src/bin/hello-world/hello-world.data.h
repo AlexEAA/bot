@@ -11,6 +11,7 @@ namespace example {
       Engine(const KryptoNinja &bot)
         : K(bot)
       {};
+    public:
       void read(const Levels &rawdata) {
         levels = rawdata;
         if (levels.bids.empty() or levels.asks.empty()) return;
@@ -24,10 +25,10 @@ namespace example {
              << " pssst.. 1 " << K.gateway->base << " = "
              << K.gateway->decimal.price.str(fair) << " " << K.gateway->quote
              << "." << endl;
-        return "Executed " + string(
+        return "Executed " + (
           K.arg<int>("debug")
-            ? __PRETTY_FUNCTION__
-            : K_SOURCE
+            ? string(__PRETTY_FUNCTION__)
+            : K.arg<string>("title")
         ) + " OK";
       };
   };

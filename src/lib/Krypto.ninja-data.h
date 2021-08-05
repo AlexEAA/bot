@@ -67,16 +67,7 @@ namespace ₿ {
 
   class FixFrames {
     protected:
-      const string  target;
-    private_ref:
-      const string &sender;
-    public:
-      FixFrames(const string &t, const string &s)
-        : target(t)
-        , sender(s)
-      {};
-    protected:
-      string frame(string data, const string &type, const unsigned long &sequence) const {
+      string frame(string data, const string &type, const unsigned long &sequence, const string &sender, const string &target) const {
         data = "35=" + type                     + "\u0001"
                "34=" + to_string(sequence)      + "\u0001"
                "49=" + sender                   + "\u0001"
@@ -86,11 +77,7 @@ namespace ₿ {
                "9="  + to_string(data.length()) + "\u0001"
              + data;
         char ch = 0;
-        for (
-          size_t i  =  data.length();
-                 i --> 0;
-          ch += data.at(i)
-        );
+        for (size_t i = data.length(); i --> 0; ch += data.at(i));
         stringstream sum;
         sum << setfill('0')
             << setw(3)
@@ -206,18 +193,18 @@ namespace ₿ {
             : Async(nullptr)
             , sockfd(s)
           {};
-          virtual void start(const curl_socket_t&, const function<void()>&)  = 0;
-          virtual void stop()                                                = 0;
+          virtual void start(const curl_socket_t&, const function<void()>&) = 0;
+          virtual void stop() = 0;
         protected:
           virtual void change(const int&, const function<void()>& = nullptr) = 0;
       };
     public:
-      virtual          void  timer_ticks_factor(const unsigned int&) const = 0;
-      virtual          void  timer_1s(const TimeEvent&)                    = 0;
-      virtual         Async *async(const function<void()>&)                = 0;
-      virtual curl_socket_t  poll()                                        = 0;
-      virtual          void  walk()                                        = 0;
-      virtual          void  end()                                         = 0;
+      virtual          void  timer_ticks_factor(const unsigned int&) const        = 0;
+      virtual          void  timer_1s(const TimeEvent&)                           = 0;
+      virtual         Async *async(const function<void()>&)                       = 0;
+      virtual curl_socket_t  poll()                                               = 0;
+      virtual          void  walk()                                               = 0;
+      virtual          void  end()                                                = 0;
   };
 #if defined _WIN32 or defined __APPLE__
   class Events: public Loop {
@@ -281,13 +268,11 @@ namespace ₿ {
           };
         protected:
           void change(const int &events, const function<void()> &data = nullptr) override {
-            if (event.data) {
-              if (data) link(data);
-              if (!uv_is_closing((uv_handle_t*)&event))
-                uv_poll_start(&event, events, [](uv_poll_t *event, int, int) {
-                  ((Poll*)event->data)->ready();
-                });
-            }
+            if (data) link(data);
+            if (!uv_is_closing((uv_handle_t*)&event))
+              uv_poll_start(&event, events, [](uv_poll_t *event, int, int) {
+                ((Poll*)event->data)->ready();
+              });
           };
       };
     private:
@@ -341,10 +326,8 @@ namespace ₿ {
           };
         protected:
           void change(const int &events, const function<void()> &data = nullptr) override {
-            if (loopfd) {
-              if (data) link(data);
-              ctl(events, EPOLL_CTL_MOD);
-            }
+            if (data) link(data);
+            ctl(events, EPOLL_CTL_MOD);
           };
         private:
           void ctl(const int &events, const int &opcode) {
@@ -365,7 +348,7 @@ namespace ₿ {
             : Poll(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC))
           {
             if (timerfd_settime(sockfd, 0, &ts, nullptr) != -1)
-              Poll::start(loopfd, [&]() {
+              start(loopfd, [&]() {
                 uint64_t again = 0;
                 if (::read(sockfd, &again, 8) == 8)
                   timer_1s();
@@ -379,7 +362,7 @@ namespace ₿ {
           Async(const curl_socket_t &loopfd, const function<void()> &data)
             : Poll(::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC))
           {
-            Poll::start(loopfd, [this, data]() {
+            start(loopfd, [this, data]() {
               uint64_t again = 0;
               if (::read(sockfd, &again, 8) == 8)
                 data();
@@ -415,8 +398,8 @@ namespace ₿ {
       void walk() override {
         while (sockfd)
           for (
-            int i  =  epoll_wait(sockfd, ready, 32, -1);
-                i --> 0;
+            int i = epoll_wait(sockfd, ready, 32, -1);
+            i --> 0;
             ((Poll*)ready[i].data.ptr)->ready()
           );
       };
@@ -431,18 +414,22 @@ namespace ₿ {
   };
 #endif
 
-  static function<void(CURL*)> args_easy_setopt = [](CURL *curl) {
+  static function<void(CURL*)> curl_global_setopt = [](CURL *curl) {
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "K");
   };
 
   class Curl {
     private_friend:
       class Easy: public Events::Poll {
-        protected:
-          string in;
         private:
           CURL *curl = nullptr;
           string out;
+        private_ref:
+          string &in;
+        public:
+          Easy(string &i)
+            : in(i)
+          {};
         protected:
           void cleanup() {
             if (curl) {
@@ -460,7 +447,7 @@ namespace ₿ {
             in.clear();
             CURLcode rc;
             if (CURLE_OK == (rc = init())) {
-              args_easy_setopt(curl);
+              curl_global_setopt(curl);
               curl_easy_setopt(curl, CURLOPT_URL, url.data());
               curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
               curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 1L);
@@ -472,9 +459,7 @@ namespace ₿ {
                 or string::npos == in.find(res2)
               ) {
                 if (rc == CURLE_OK)
-                  rc = string::npos == in.find("invalid API key")
-                     ? CURLE_WEIRD_SERVER_REPLY
-                     : CURLE_LOGIN_DENIED;
+                  rc = CURLE_WEIRD_SERVER_REPLY;
                 cleanup();
               }
               in.clear();
@@ -497,7 +482,6 @@ namespace ₿ {
             if (curl and sockfd) {
               out += data;
               change(EPOLLIN | EPOLLOUT);
-              send();
             } else {
               rc = CURLE_COULDNT_CONNECT;
               cleanup();
@@ -560,16 +544,28 @@ namespace ₿ {
     public_friend:
       class Web {
         public:
-          static json xfer(const string &url, const function<void(CURL*)> _easy_setopt = nullptr) {
+          static const json xfer(const string &url, const long &timeout = 13) {
+            return request(url, [&](CURL *curl) {
+              curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+            });
+          };
+          static const json xfer(const string &url, const string &post) {
+            return request(url, [&](CURL *curl) {
+              struct curl_slist *h_ = nullptr;
+              h_ = curl_slist_append(h_, "Content-Type: application/x-www-form-urlencoded");
+              curl_easy_setopt(curl, CURLOPT_HTTPHEADER, h_);
+              curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.data());
+            });
+          };
+          static const json request(const string &url, const function<void(CURL*)> custom_setopt) {
             static mutex waiting_reply;
             lock_guard<mutex> lock(waiting_reply);
             string reply;
             CURLcode rc = CURLE_FAILED_INIT;
             CURL *curl = curl_easy_init();
             if (curl) {
-              args_easy_setopt(curl);
-              if (_easy_setopt) _easy_setopt(curl);
-              curl_easy_setopt(curl, CURLOPT_TIMEOUT, 21L);
+              custom_setopt(curl);
+              curl_global_setopt(curl);
               curl_easy_setopt(curl, CURLOPT_URL, url.data());
               curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write);
               curl_easy_setopt(curl, CURLOPT_WRITEDATA, &reply);
@@ -592,28 +588,28 @@ namespace ₿ {
       class WebSocket: public Easy,
                        public WebSocketFrames {
         private:
-          using Easy::in;
+          string in;
+        public:
+          WebSocket()
+            : Easy(in)
+          {};
         protected:
           CURLcode connect(const string &uri) {
             CURLcode rc = CURLE_URL_MALFORMAT;
             CURLU *url = curl_url();
-            char *host,
-                 *port,
-                 *path,
-                 *query;
+            char *host_,
+                 *port_,
+                 *path_;
             string header;
             if (!curl_url_set(url, CURLUPART_URL, ("http" + uri.substr(2)).data(), 0)) {
-              if (!curl_url_get(url, CURLUPART_HOST, &host, 0)) {
-                header = string(host);
-                curl_free(host);
-                if (!curl_url_get(url, CURLUPART_PORT, &port, CURLU_DEFAULT_PORT)) {
-                  header += ":" + string(port);
-                  curl_free(port);
-                  if (!curl_url_get(url, CURLUPART_PATH, &path, 0)) {
-                    header = "GET " + string(path) + (
-                                curl_url_get(url, CURLUPART_QUERY, &query, 0)
-                                  ? "" : "?" + string(query)
-                             ) + " HTTP/1.1"
+              if (!curl_url_get(url, CURLUPART_HOST, &host_, 0)) {
+                header = string(host_);
+                curl_free(host_);
+                if (!curl_url_get(url, CURLUPART_PORT, &port_, CURLU_DEFAULT_PORT)) {
+                  header += ":" + string(port_);
+                  curl_free(port_);
+                  if (!curl_url_get(url, CURLUPART_PATH, &path_, 0)) {
+                    header = "GET " + string(path_) + " HTTP/1.1"
                              "\r\n" "Host: " + header +
                              "\r\n" "Upgrade: websocket"
                              "\r\n" "Connection: Upgrade"
@@ -621,8 +617,7 @@ namespace ₿ {
                              "\r\n" "Sec-WebSocket-Version: 13"
                              "\r\n"
                              "\r\n";
-                    curl_free(path);
-                    curl_free(query);
+                    curl_free(path_);
                     rc = CURLE_OK;
                   }
                 }
@@ -650,30 +645,31 @@ namespace ₿ {
             return msg;
           };
       };
-      class WebSocketTwin: public WebSocket {
-        protected:
-          virtual string twin(const string&) const = 0;
-      };
       class FixSocket: public Easy,
                        public FixFrames {
         private:
-          using Easy::in;
+          string in;
           unsigned long sequence = 0;
+        private_ref:
+          const string &sender,
+                       &target;
         public:
-          FixSocket(const string &t, const string &s)
-            : FixFrames(t, s)
+          FixSocket(const string &s, const string &t)
+            : Easy(in)
+            , sender(s)
+            , target(t)
           {};
         protected:
           CURLcode connect(const string &uri, const string &logon) {
             return Easy::connect(
               "https://" + uri,
-              frame(logon, "A", sequence = 1),
+              frame(logon, "A", sequence = 1, sender, target),
               "8=FIX.4.2" "\u0001",
               "\u0001" "35=A" "\u0001"
             );
           };
           CURLcode emit(const string &data, const string &type) {
-            return Easy::emit(frame(data, type, ++sequence));
+            return Easy::emit(frame(data, type, ++sequence, sender, target));
           };
           string unframe() {
             string pong;
@@ -698,9 +694,6 @@ namespace ₿ {
       static string strU(string input) {
         transform(input.begin(), input.end(), input.begin(), ::toupper);
         return input;
-      };
-      static string CRC32(const string &input) {
-        return to_string(crc32(0, (const Bytef*)input.data(), input.length()));
       };
       static string B64(const string &input) {
         BIO *bio, *b64;
@@ -835,7 +828,7 @@ namespace ₿ {
             , session(e)
             , time(Tstamp)
           {
-            Socket::start(loopfd, ioHttp);
+            start(loopfd, ioHttp);
           };
           void shutdown() {
             if (ssl) {
@@ -885,7 +878,7 @@ namespace ₿ {
             ) {
               if (addr.empty())
                 addr = address();
-              const string path   = in.substr(4, in.find(" HTTP/") - 4);
+              const string path   = in.substr(4, in.find(" HTTP/1.1") - 4);
               const size_t papers = in.find("Authorization: Basic ");
               string auth;
               if (papers != string::npos) {
@@ -929,23 +922,23 @@ namespace ₿ {
           };
           string address() const {
             string addr;
-            union {
-              sockaddr         sa;
-              sockaddr_in      s4;
-              sockaddr_in6     s6;
-              sockaddr_storage ss;
-            } u;
-            socklen_t len = sizeof(u);
-            if (getpeername(sockfd, &u.sa, &len) != -1) {
+#ifndef _WIN32
+            sockaddr_storage ss;
+            socklen_t len = sizeof(ss);
+            if (getpeername(sockfd, (sockaddr*)&ss, &len) != -1) {
               char buf[INET6_ADDRSTRLEN];
-              if (u.ss.ss_family == AF_INET)
-                inet_ntop(AF_INET,  &u.s4.sin_addr,  buf, sizeof(buf));
-              else
-                inet_ntop(AF_INET6, &u.s6.sin6_addr, buf, sizeof(buf));
+              if (ss.ss_family == AF_INET) {
+                auto *ipv4 = (sockaddr_in*)&ss;
+                inet_ntop(AF_INET, &ipv4->sin_addr, buf, sizeof(buf));
+              } else {
+                auto *ipv6 = (sockaddr_in6*)&ss;                                //-V641
+                inet_ntop(AF_INET6, &ipv6->sin6_addr, buf, sizeof(buf));
+              }
               addr = string(buf);
               if (addr.length() > 7 and addr.substr(0, 7) == "::ffff:") addr = addr.substr(7);
               if (addr.length() < 7) addr.clear();
             }
+#endif
             return addr.empty() ? "unknown" : addr;
           };
           void io() {
@@ -1020,7 +1013,7 @@ namespace ₿ {
             });
           };
           string protocol() const {
-            return "HTTP" + string(!!ctx, 'S');
+            return "HTTP" + string(ctx ? 1 : 0, 'S');
           };
           void broadcast(const char &portal, const unordered_map<char, string> &queue) {
             string msgs;
@@ -1031,9 +1024,11 @@ namespace ₿ {
                 it.send(msgs);
           };
           void purge() {
-            while (!requests.empty()) {
+            if (!requests.empty()) {
               requests.back().shutdown();
               requests.pop_back();
+              purge();
+              return;
             }
             shutdown();
           };

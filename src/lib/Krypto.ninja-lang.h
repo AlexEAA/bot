@@ -28,10 +28,7 @@
 #include <getopt.h>
 #include <unistd.h>
 
-#ifdef  _WIN32
-#undef  _WIN32_WINNT
-#define _WIN32_WINNT 0x0601
-#else
+#ifndef _WIN32
 #include <execinfo.h>
 #include <sys/socket.h>
 #include <sys/resource.h>
@@ -48,8 +45,6 @@
 #include <sys/timerfd.h>
 #include <sys/eventfd.h>
 #endif
-
-#include <zlib.h>
 
 #include <json.h>
 
@@ -85,15 +80,10 @@ using Clock  = long long int;
 #endif
 
 //! \def
-//! \brief Number of ticks in milliseconds..
-//! \note  ..since Thu Jan  1 00:00:00 1970.
+//! \brief Number of ticks in milliseconds, since Thu Jan  1 00:00:00 1970.
 #define Tstamp chrono::duration_cast<chrono::milliseconds>(     \
                  chrono::system_clock::now().time_since_epoch() \
                ).count()
-//! \note  ..since beginning of execution.
-static auto
-        Tbegin = Tstamp;
-#define Tspent   Tstamp - Tbegin
 
 //! \def
 //! \brief Archimedes of Syracuse was here, since two millenniums ago.

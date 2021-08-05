@@ -1,10 +1,12 @@
 class HelloWorld: public KryptoNinja {
-  private:
+  public:
     example::Engine engine;
   public:
     HelloWorld()
       : engine(*this)
     {
+      autobot   = true;
+      dustybot  = true;
       events    = {
         [&](const Levels &rawdata) { engine.read(rawdata); }
       };

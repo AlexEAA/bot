@@ -6,9 +6,10 @@ namespace ₿ {
 
   //! \brief     Call all endingFn once and print a last log msg.
   //! \param[in] reason Allows any (colorful?) string.
-  static void exit(const string &reason = "") {
-    epilogue = reason + string(!(reason.empty() or reason.back() == '.'), '.');
-    raise(SIGQUIT);
+  //! \param[in] reboot Allows a reboot only because https://tldp.org/LDP/Bash-Beginners-Guide/html/sect_09_03.html.
+  static void exit(const string &reason = "", const bool &reboot = false) {
+    epilogue = reason + string((reason.empty() or reason.back() == '.') ? 0 : 1, '.');
+    raise(reboot ? SIGTERM : SIGQUIT);
   };
 
   static int colorful = 1;
@@ -60,26 +61,35 @@ namespace ₿ {
   //! \brief     Call all endingFn once and print a last error log msg.
   //! \param[in] prefix Allows any string, if possible with a length of 2.
   //! \param[in] reason Allows any (colorful?) string.
-  static void error(const string &prefix, const string &reason) {
-    exit(prefix + Ansi::r(COLOR_RED) + " Errrror: " + Ansi::b(COLOR_RED) + reason);
+  //! \param[in] reboot Allows a reboot only because https://tldp.org/LDP/Bash-Beginners-Guide/html/sect_09_03.html.
+  static void error(const string &prefix, const string &reason, const bool &reboot = false) {
+    if (reboot) this_thread::sleep_for(chrono::seconds(3));
+    exit(prefix + Ansi::r(COLOR_RED) + " Errrror: " + Ansi::b(COLOR_RED) + reason, reboot);
   };
 
   class Rollout {
     public:
-      Rollout() {
+      Rollout(/* KMxTWEpb9ig */) {
         static once_flag rollout;
         call_once(rollout, version);
-        curl_global_init(CURL_GLOBAL_ALL);
       };
     protected:
       static void version() {
-        clog << Ansi::b(COLOR_GREEN) << K_SOURCE " " K_BUILD
-             << Ansi::r(COLOR_GREEN) << " (build on " K_CHOST " at " K_STAMP ")"
+        curl_global_init(CURL_GLOBAL_ALL);
+        clog << Ansi::b(COLOR_GREEN) << K_SOURCE
+             << Ansi::r(COLOR_GREEN) << " " K_BUILD " " K_STAMP ".\n";
+        const string mods = changelog();
+        const int commits = count(mods.begin(), mods.end(), '\n');
+        clog << Ansi::b(COLOR_GREEN) << K_0_DAY << Ansi::r(COLOR_GREEN) << ' '
+             << (commits
+                 ? '-' + to_string(commits) + "commit"
+                   + string(commits == 1 ? 0 : 1, 's') + '.'
+                 : "(0day)"
+                )
 #ifndef NDEBUG
-             << Ansi::b(COLOR_GREEN) << " with DEBUG MODE enabled"
-             << Ansi::r(COLOR_GREEN)
+            << " with DEBUG MODE enabled"
 #endif
-             << '.' << Ansi::reset() << '\n';
+            << ".\n" << Ansi::r(COLOR_YELLOW) << mods << Ansi::reset();
       };
       static string changelog() {
         string mods;
@@ -88,7 +98,7 @@ namespace ₿ {
           json::object();
 #else
           Curl::Web::xfer("https://api.github.com/repos/ctubio/"
-            "Krypto-trading-bot/compare/" K_HEAD "...HEAD");
+            "Krypto-trading-bot/compare/" K_HEAD "...HEAD", 4L);
 #endif
         if (diff.value("ahead_by", 0)
           and diff.find("commits") != diff.end()
@@ -107,11 +117,8 @@ namespace ₿ {
   static vector<function<void()>> endingFn;
 
   class Ending: public Rollout {
-    public_friend:
-      using QuitEvent = function<void()>;
     public:
       Ending() {
-        signal(SIGPIPE, SIG_IGN);
         signal(SIGINT, [](const int) {
           clog << '\n';
           raise(SIGQUIT);
@@ -121,6 +128,7 @@ namespace ₿ {
         signal(SIGABRT, wtf);
         signal(SIGSEGV, wtf);
         signal(SIGUSR1, wtf);
+        signal(SIGPIPE, SIG_IGN);
       };
       void ending(const function<void()> &fn) {
         endingFn.push_back(fn);
@@ -141,7 +149,7 @@ namespace ₿ {
       static void die(const int) {
         if (epilogue.empty())
           epilogue = "Excellent decision! "
-                   + Curl::Web::xfer("https://api.icndb.com/jokes/random?escape=javascript&limitTo=[nerdy]")
+                   + Curl::Web::xfer("https://api.icndb.com/jokes/random?escape=javascript&limitTo=[nerdy]", 4L)
                        .value("/value/joke"_json_pointer, "let's plant a tree instead..");
         halt(
           epilogue.find("Errrror") == string::npos
@@ -150,7 +158,7 @@ namespace ₿ {
         );
       };
       static void err(const int) {
-        if (epilogue.empty()) epilogue = "Unknown exit reason, no joke.";
+        if (epilogue.empty()) epilogue = "Unknown error, no joke.";
         halt(EXIT_FAILURE);
       };
       static void wtf(const int sig) {
@@ -158,8 +166,8 @@ namespace ₿ {
         const string mods = changelog();
         if (mods.empty()) {
           epilogue += "(Three-Headed Monkey found):\n" + epitaph
-            + "- binbuild: " K_SOURCE " " K_CHOST "\n"
-              "- lastbeat: " + to_string(Tspent) + '\n'
+             + "- binbuild: " K_SOURCE " " K_BUILD "\n"
+               "- lastbeat: " + to_string((float)clock()/CLOCKS_PER_SEC) + '\n'
 #ifndef _WIN32
             + "- tracelog: " + '\n';
           void *k[69];
@@ -181,7 +189,7 @@ namespace ₿ {
             + '\n' + Ansi::b(COLOR_YELLOW) + "Hint!" + Ansi::r(COLOR_YELLOW)
             + '\n' + "please upgrade to the latest commit; the encountered error may be already fixed at:"
             + '\n' + mods
-            + '\n' + "If you agree, consider to run \"make upgrade\" prior further executions."
+            + '\n' + "If you agree, consider to run \"make latest\" prior further executions."
             + '\n' + '\n';
         halt(EXIT_FAILURE);
       };
@@ -199,8 +207,6 @@ namespace ₿ {
         } padding = {ANY_NUM, 0, 0, 0};
       } display;
       WINDOW *stdlog = nullptr;
-    private:
-      mutable map<string, Clock> limits;
     public:
       unsigned int padding_bottom(const unsigned int &bottom) const {
         if (bottom != display.padding.bottom) {
@@ -238,7 +244,7 @@ namespace ₿ {
           << setw(3) << microseconds.count();
         time_t tt = chrono::system_clock::to_time_t(clock);
         char datetime[15];
-        strftime(datetime, 15, "%m/%d %H:%M:%S", localtime(&tt));
+        strftime(datetime, 15, "%m/%d %T", localtime(&tt));
         if (!display.terminal)
           return Ansi::b(COLOR_GREEN) + datetime
                + Ansi::r(COLOR_GREEN) + microtime.str()
@@ -267,8 +273,8 @@ namespace ₿ {
           else                  clog << Ansi::r(COLOR_WHITE);
           clog << ' ' << reason;
           if (!highlight.empty())
-            clog << string(reason.back() != '=', ' ') << Ansi::b(COLOR_YELLOW) << highlight;
-          clog << Ansi::r(COLOR_WHITE) << '.' << endl;
+            clog << ' ' << Ansi::b(COLOR_YELLOW) << highlight;
+          clog << Ansi::r(COLOR_WHITE) << ".\n";
           return;
         }
         if (!stdlog) return;
@@ -283,8 +289,7 @@ namespace ₿ {
         if (color == 1)       wattroff(stdlog, COLOR_PAIR(COLOR_CYAN));
         else if (color == -1) wattroff(stdlog, COLOR_PAIR(COLOR_MAGENTA));
         if (!highlight.empty()) {
-          if (reason.back() != '=')
-            wprintw(stdlog, " ");
+          wprintw(stdlog, " ");
           wattroff(stdlog, COLOR_PAIR(COLOR_WHITE));
           wattron(stdlog, COLOR_PAIR(COLOR_YELLOW));
           wprintw(stdlog, highlight.data());
@@ -295,13 +300,7 @@ namespace ₿ {
         wattroff(stdlog, COLOR_PAIR(COLOR_WHITE));
         wrefresh(stdlog);
       };
-      void logWar(const string &prefix, const string &reason, const Clock &ratelimit = 0) const {
-        if (ratelimit) {
-          const Clock now = Tstamp;
-          if (limits.find(reason) != limits.end() and limits[reason] + ratelimit > now)
-            return;
-          limits[reason] = now;
-        }
+      void logWar(const string &prefix, const string &reason) const {
         if (!display.terminal) {
           clog << stamp()
                << prefix          << Ansi::r(COLOR_RED)
@@ -368,6 +367,8 @@ namespace ₿ {
        const string  help;
       };
     protected:
+      bool autobot  = false;
+      bool dustybot = false;
       using MutableUserArguments = unordered_map<string, variant<string, int, double>>;
       pair<vector<Argument>, function<void(MutableUserArguments&)>> arguments;
     private:
@@ -380,7 +381,7 @@ namespace ₿ {
         return get<T>(args.at(name));
       };
     protected:
-      void main(Ending *const K, int argc, char** argv, const vector<variant<Loop::TimeEvent, Ending::QuitEvent, Gw::DataEvent>> &events, const bool &blackhole, const bool &headless) {
+      void main(Ending *const K, int argc, char** argv, const bool &databases, const bool &headless) {
         K->ending([&]() {
           if (display.terminal) {
             display = {};
@@ -389,118 +390,87 @@ namespace ₿ {
           }
           clog << stamp()
                << epilogue
-               << string(!epilogue.empty(), '\n');
+               << string(epilogue.empty() ? 0 : 1, '\n');
         });
-        args["autobot"]  =
+        args["autobot"]  = autobot;
+        args["dustybot"] = dustybot;
         args["headless"] = headless;
         args["naked"]    = !display.terminal;
         vector<Argument> long_options = {
-          {"INFORMATION",  "",       nullptr,  ""},
-          {"help",         "h",      nullptr,  "print this help and quit"},
-          {"version",      "v",      nullptr,  "print current build version and quit"},
-          {"latency",      "1",      nullptr,  "print current HTTP latency (not from WS) and quit"},
-          {"list",         "1",      nullptr,  "print current available currency pairs and quit"},
-          {"CREDENTIALS",  "",       nullptr,  ""},
-          {"exchange",     "NAME",   "",       "set exchange NAME for trading, mandatory"},
-          {"currency",     "PAIR",   "",       "set currency PAIR for trading, use format ISO 4217-A3"
-                                               "\n" "with '/' separator, like 'BTC/EUR', mandatory"},
-          {"apikey",       "WORD",   "",       "set (never share!) WORD as api key for trading, mandatory"},
-          {"secret",       "WORD",   "",       "set (never share!) WORD as api secret for trading, mandatory"},
-          {"passphrase",   "WORD",   "",       "set (never share!) WORD as api passphrase for trading"},
-          {"ENDPOINTS",    "",       nullptr,  ""},
-          {"http",         "URL",    "",       "set URL of alernative HTTPS api endpoint for trading"},
-          {"wss",          "URL",    "",       "set URL of alernative WSS api endpoint for trading"},
-          {"fix",          "URL",    "",       "set URL of alernative FIX api endpoint for trading"},
-          {"NETWORK",      "",       nullptr,  ""},
-          {"nocache",      "1",      nullptr,  "do not cache handshakes 7 hours at " K_HOME "/cache"},
-          {"interface",    "IP",     "",       "set IP to bind as outgoing network interface"},
-          {"ipv6",         "1",      nullptr,  "use IPv6 when possible"}
+          {"help",         "h",      nullptr,  "show this help and quit"},
+          {"version",      "v",      nullptr,  "show current build version and quit"},
+          {"latency",      "1",      nullptr,  "check current HTTP latency (not from WS) and quit"},
+          {"nocache",      "1",      nullptr,  "do not cache handshakes 7 hours at /var/lib/K/cache"}
         };
+        if (!arg<int>("autobot")) long_options.push_back(
+          {"autobot",      "1",      nullptr,  "automatically start trading on boot"}
+        );
+        if (!arg<int>("dustybot")) long_options.push_back(
+          {"dustybot",     "1",      nullptr,  "do not automatically cancel all orders on exit"}
+        );
+        if (!arg<int>("naked")) long_options.push_back(
+          {"naked",        "1",      nullptr,  "do not display CLI, print output to stdout instead"}
+        );
+        if (databases) long_options.push_back(
+          {"database",     "FILE",   "",       "set alternative PATH to database filename,"
+                                               "\n" "default PATH is '/var/lib/K/db/K-*.db',"
+                                               "\n" "or use ':memory:' (see sqlite.org/inmemorydb.html)"}
+        );
         if (!arg<int>("headless")) for (const Argument &it : (vector<Argument>){
-          {"ADMIN",        "",       nullptr,  ""},
           {"headless",     "1",      nullptr,  "do not listen for UI connections,"
                                                "\n" "all other UI related arguments will be ignored"},
           {"without-ssl",  "1",      nullptr,  "do not use HTTPS for UI connections (use HTTP only)"},
           {"whitelist",    "IP",     "",       "set IP or csv of IPs to allow UI connections,"
                                                "\n" "alien IPs will get a zip-bomb instead"},
           {"client-limit", "NUMBER", "7",      "set NUMBER of maximum concurrent UI connections"},
-          {"port",         "NUMBER", "3000",   "set NUMBER of an open port to listen for UI connections"
-                                               "\n" "default NUMBER is '3000'"},
-          {"user",         "WORD",   "",       "set allowed WORD as username for UI basic authentication"},
-          {"pass",         "WORD",   "",       "set allowed WORD as password for UI basic authentication"},
+          {"port",         "NUMBER", "3000",   "set NUMBER of an open port to listen for UI connections"},
+          {"user",         "WORD",   "NULL",   "set allowed WORD as username for UI connections,"
+                                               "\n" "mandatory but may be 'NULL'"},
+          {"pass",         "WORD",   "NULL",   "set allowed WORD as password for UI connections,"
+                                               "\n" "mandatory but may be 'NULL'"},
           {"ssl-crt",      "FILE",   "",       "set FILE to custom SSL .crt file for HTTPS UI connections"
                                                "\n" "(see www.akadia.com/services/ssh_test_certificate.html)"},
           {"ssl-key",      "FILE",   "",       "set FILE to custom SSL .key file for HTTPS UI connections"
-                                               "\n" "(the passphrase MUST be removed from the .key file!)"},
-          {"matryoshka",   "URL",    "https://example.com/", "set Matryoshka link URL of the next UI"},
-          {"ignore-sun",   "2",      nullptr,  "do not switch UI to light theme on daylight"},
-          {"ignore-moon",  "1",      nullptr,  "do not switch UI to dark theme on moonlight"}
+                                               "\n" "(the passphrase MUST be removed from the .key file!)"}
         }) long_options.push_back(it);
         for (const Argument &it : (vector<Argument>){
-          {"title",        "NAME",   K_SOURCE, "set NAME to allow admins to identify different bots"},
-          {"BOT",          "",       nullptr,  ""}
+          {"interface",    "IP",     "",       "set IP to bind as outgoing network interface"},
+          {"ipv6",         "1",      nullptr,  "use IPv6 when possible"},
+          {"exchange",     "NAME",   "NULL",   "set exchange NAME for trading, mandatory"},
+          {"currency",     "PAIR",   "NULL",   "set currency PAIR for trading, use format"
+                                               "\n" "with '/' separator, like 'BTC/EUR'"},
+          {"apikey",       "WORD",   "NULL",   "set (never share!) WORD as api key for trading, mandatory"},
+          {"secret",       "WORD",   "NULL",   "set (never share!) WORD as api secret for trading, mandatory"},
+          {"passphrase",   "WORD",   "NULL",   "set (never share!) WORD as api passphrase for trading,"
+                                               "\n" "mandatory but may be 'NULL'"},
+          {"maker-fee",    "AMOUNT", "0",      "set custom percentage of maker fee, like '0.1'"},
+          {"taker-fee",    "AMOUNT", "0",      "set custom percentage of taker fee, like '0.1'"},
+          {"min-size",     "AMOUNT", "0",      "set custom minimum order size, like '0.01'"},
+          {"leverage",     "AMOUNT", "1",      "set between '0.01' and '100' to enable isolated margin,"
+                                               "\n" "or use '0' for cross margin; default AMOUNT is '1'"},
+          {"http",         "URL",    "",       "set URL of alernative HTTPS api endpoint for trading"},
+          {"wss",          "URL",    "",       "set URL of alernative WSS api endpoint for trading"},
+          {"fix",          "URL",    "",       "set URL of alernative FIX api endpoint for trading"},
+          {"market-limit", "NUMBER", "321",    "set NUMBER of maximum price levels for the orderbook,"
+                                               "\n" "default NUMBER is '321' and the minimum is '10'"}
         }) long_options.push_back(it);
-        if (!arg<int>("autobot")) long_options.push_back(
-          {"autobot",      "1",      nullptr,  "automatically start trading on boot"}
-        );
         for (const Argument &it : arguments.first)
           long_options.push_back(it);
         arguments.first.clear();
         for (const Argument &it : (vector<Argument>){
-          {"debug-orders", "1",      nullptr,  "print detailed output about exchange messages"},
-          {"debug-quotes", "1",      nullptr,  "print detailed output about quoting engine"},
           {"debug-secret", "1",      nullptr,  "print (never share!) secret inputs and outputs"},
           {"debug",        "1",      nullptr,  "print detailed output about all the (previous) things!"},
           {"colors",       "1",      nullptr,  "print highlighted output"},
+          {"title",        "WORD",   K_SOURCE, "set WORD to allow admins to identify different bots"},
+          {"free-version", "1",      nullptr,  "slowdown market levels 7 seconds"}
         }) long_options.push_back(it);
-        if (!arg<int>("naked")) long_options.push_back(
-          {"naked",        "1",      nullptr,  "do not display CLI, print output to stdout instead"}
-        );
-        if (!blackhole) long_options.push_back(
-          {"database",     "FILE",   "",       "set alternative PATH to database filename,"
-                                               "\n" "default PATH is '" K_HOME "/db/K-*.db',"
-                                               "\n" "or use ':memory:' (see sqlite.org/inmemorydb.html)"}
-        );
-        long_options.push_back(
-          {"free-version", "1",      nullptr,  "slowdown market levels 121 seconds"}
-        );
-        vector<Argument> io_options(find_if(
-          long_options.begin(), long_options.end(),
-          [&](const Argument &it) {
-            return "debug" == it.name.substr(0, 5);
-          }
-        ), long_options.end());
-        long_options = vector<Argument>(
-          long_options.begin(),
-          long_options.end() - io_options.size()
-        );
-        long_options.push_back(
-          {"market-limit", "NUMBER", "321",    "set NUMBER of maximum price levels for the orderbook,"
-                                               "\n" "default NUMBER is '321' and the minimum is '10'"}
-        );
-        bool order_ev = false;
-        for (const auto &it : events)
-          if (holds_alternative<Gw::DataEvent>(it)
-            and holds_alternative<function<void(const Order&)>>(get<Gw::DataEvent>(it))
-          ) order_ev = true;
-        if (order_ev)
-          long_options.push_back(
-            {"lifetime",     "NUMBER", "0",    "set NUMBER of minimum milliseconds to keep orders open,"
-                                               "\n" "otherwise open orders can be replaced anytime required"}
-          );
-        long_options.push_back(
-          {"I/O",          "",       nullptr,  ""}
-        );
-        for (const Argument &it : io_options)
-          long_options.push_back(it);
         int index = ANY_NUM;
         vector<option> opt_long = { {nullptr, 0, nullptr, 0} };
         for (const Argument &it : long_options) {
-          if (it.help.empty()) continue;
-          else if (!it.default_value)             args[it.name] = 0;
-          else if ( it.defined_value == "NUMBER") args[it.name] = stoi(it.default_value);
-          else if ( it.defined_value == "AMOUNT") args[it.name] = stod(it.default_value);
-          else                                    args[it.name] =      it.default_value;
+          if     (!it.default_value)             args[it.name] = 0;
+          else if (it.defined_value == "NUMBER") args[it.name] = stoi(it.default_value);
+          else if (it.defined_value == "AMOUNT") args[it.name] = stod(it.default_value);
+          else                                   args[it.name] =      it.default_value;
           opt_long.insert(opt_long.end()-1, {
             it.name.data(),
             it.default_value
@@ -522,9 +492,9 @@ namespace ₿ {
           switch (k = getopt_long(argc, argv, "hv", (option*)&opt_long[0], &index)) {
             case -1 :
             case  0 : break;
-            case 'h': help(long_options, order_ev, headless);             [[fallthrough]];
+            case 'h': help(long_options); [[fallthrough]];
             case '?':
-            case 'v': EXIT(EXIT_SUCCESS);                                 [[fallthrough]];
+            case 'v': EXIT(EXIT_SUCCESS);                                       //-V796
             default : {
               const string name(opt_long.at(index).name);
               if      (holds_alternative<int>(args[name]))    args[name] =   stoi(optarg);
@@ -546,18 +516,18 @@ namespace ₿ {
         if (arg<int>("naked"))
           display = {};
         if (!arg<string>("interface").empty() and !arg<int>("ipv6"))
-          args_easy_setopt = [this](CURL *curl) {
+          curl_global_setopt = [this](CURL *curl) {
             curl_easy_setopt(curl, CURLOPT_USERAGENT, "K");
             curl_easy_setopt(curl, CURLOPT_INTERFACE, arg<string>("interface").data());
             curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
           };
         else if (!arg<string>("interface").empty())
-          args_easy_setopt = [this](CURL *curl) {
+          curl_global_setopt = [this](CURL *curl) {
             curl_easy_setopt(curl, CURLOPT_USERAGENT, "K");
             curl_easy_setopt(curl, CURLOPT_INTERFACE, arg<string>("interface").data());
           };
         else if (!arg<int>("ipv6"))
-          args_easy_setopt = [](CURL *curl) {
+          curl_global_setopt = [](CURL *curl) {
             curl_easy_setopt(curl, CURLOPT_USERAGENT, "K");
             curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
           };
@@ -572,25 +542,14 @@ namespace ₿ {
         args["currency"] = Text::strU(arg<string>("currency"));
         args["base"]  = Text::strU(arg<string>("currency").substr(0, arg<string>("currency").find("/")));
         args["quote"] = Text::strU(arg<string>("currency").substr(1+ arg<string>("currency").find("/")));
-        if (args.find("leverage")  == args.end()) args["leverage"]  = 1.0;
-        if (args.find("min-size")  == args.end()) args["min-size"]  = 0.0;
-        if (args.find("maker-fee") == args.end()) args["maker-fee"] = 0.0;
-        if (args.find("taker-fee") == args.end()) args["taker-fee"] = 0.0;
         args["market-limit"] = max(10, arg<int>("market-limit"));
         args["leverage"] = fmax(0, fmin(100, arg<double>("leverage")));
         if (arg<int>("debug"))
-          args["debug-orders"] =
-          args["debug-quotes"] =
           args["debug-secret"] = 1;
         if (arg<int>("latency"))
           args["nocache"] = 1;
 #if !defined _WIN32 and defined NDEBUG
-        if (arg<int>("latency")
-          or arg<int>("list")
-          or arg<int>("debug-orders")
-          or arg<int>("debug-quotes")
-          or arg<int>("debug-secret")
-        )
+        if (arg<int>("latency") or arg<int>("debug-secret"))
 #endif
           args["naked"] = 1;
         if (args.find("database") != args.end()) {
@@ -599,7 +558,7 @@ namespace ₿ {
             (arg<string>("database") == ":memory:"
               ? args["diskdata"]
               : args["database"]
-            ) = (K_HOME "/db/" K_SOURCE)
+            ) = ("/var/lib/K/db/" K_SOURCE)
               + ('.' + arg<string>("exchange"))
               +  '.' + arg<string>("base")
               +  '.' + arg<string>("quote")
@@ -609,12 +568,13 @@ namespace ₿ {
           if (arg<int>("latency") or !arg<int>("port") or !arg<int>("client-limit"))
             args["headless"] = 1;
           args["B64auth"] = (!arg<int>("headless")
-            and !arg<string>("user").empty() and !arg<string>("pass").empty()
+            and arg<string>("user") != "NULL" and !arg<string>("user").empty()
+            and arg<string>("pass") != "NULL" and !arg<string>("pass").empty()
           ) ? Text::B64(arg<string>("user") + ':' + arg<string>("pass"))
             : "";
         }
       };
-      void help(const vector<Argument> &long_options, const bool &order_ev, const bool &headless) {
+      void help(const vector<Argument> &long_options) {
         const vector<string> stamp = {
           " \\__/  \\__/ ", " | (   .    ", "  __   \\__/ ",
           " /  \\__/  \\ ", " |  `.  `.  ", " /  \\       ",
@@ -625,46 +585,34 @@ namespace ₿ {
         const unsigned int x = !(y % 2)
                              + !(y % 21);
         clog
-          << Ansi::r(COLOR_GREEN)  << '\n' << PERMISSIVE_analpaper_SOFTWARE_LICENSE << '\n' << '\n'
-          << Ansi::r(COLOR_GREEN) << "   installer: " << Ansi::r(COLOR_YELLOW) << "https://krypto.ninja/Makefile" << '\n'
-          << Ansi::b(COLOR_GREEN) << " K" << Ansi::r(COLOR_GREEN) << " questions: " << Ansi::r(COLOR_YELLOW) << "https://github.com/ctubio/Krypto-trading-bot/discussions" << '\n'
-          << Ansi::r(COLOR_GREEN)  << "   bugkiller: " << Ansi::r(COLOR_YELLOW) << "https://github.com/ctubio/Krypto-trading-bot/issues" << '\n'
-          << Ansi::b(COLOR_WHITE) << stamp.at(((++y%4)*3)+x) << "Usage:" << Ansi::b(COLOR_YELLOW) << " " << K_SOURCE " [arguments]";
+          << Ansi::r(COLOR_GREEN) << PERMISSIVE_analpaper_SOFTWARE_LICENSE << '\n'
+          << Ansi::r(COLOR_GREEN) << "  questions: " << Ansi::r(COLOR_YELLOW) << "https://earn.com/analpaper/" << '\n'
+          << Ansi::b(COLOR_GREEN) << "K" << Ansi::r(COLOR_GREEN) << " bugkiller: " << Ansi::r(COLOR_YELLOW) << "https://github.com/ctubio/Krypto-trading-bot/issues/new" << '\n'
+          << Ansi::r(COLOR_GREEN) << "  downloads: " << Ansi::r(COLOR_YELLOW) << "ssh://git@github.com/ctubio/Krypto-trading-bot" << '\n'
+          << Ansi::b(COLOR_WHITE) << stamp.at(((++y%4)*3)+x) << "Usage:" << Ansi::b(COLOR_YELLOW) << " " << K_SOURCE " [arguments]" << '\n';
         clog
-          << '\n' << Ansi::b(COLOR_WHITE) << stamp.at(((++y%4)*3)+x) << "[arguments]:";
+          << Ansi::b(COLOR_WHITE) << stamp.at(((++y%4)*3)+x) << "[arguments]:";
         for (const Argument &it : long_options) {
-          if ( ( headless and  it.name == "title")
-            or (!order_ev and (it.name == "debug-orders"
-                            or it.name == "debug-quotes"))
-          ) continue;
           string usage = it.help;
-          if (usage.empty())
-            clog
-              << '\n' << Ansi::b(COLOR_WHITE) << stamp.at(((++y%4)*3)+x) << string(16, ' ')
-              << "░▒▓█ " << string((11 - it.name.length()) / 2, ' ')
-              << it.name
-              << string((11 - it.name.length()) / 2, ' ') << " █▓▒░";
-          else {
-            string::size_type n = 0;
-            while ((n = usage.find('\n', n + 1)) != string::npos)
-              usage.insert(n + 1, 28, ' ');
-            const string example = "--" + it.name + (it.default_value ? "=" + it.defined_value : "");
-            usage = '\n' + (
-              (!it.default_value and it.defined_value.at(0) > '>')
-                ? "-" + it.defined_value + ", "
-                : "    "
-            ) + example + string(22 - example.length(), ' ')
-              + "- " + usage;
-            n = 0;
-            do usage.insert(n + 1, Ansi::b(COLOR_WHITE) + stamp.at(((++y%4)*3)+x) + Ansi::r(COLOR_WHITE));
-            while ((n = usage.find('\n', n + 1)) != string::npos);
-            clog << usage << '.';
-          }
+          string::size_type n = 0;
+          while ((n = usage.find('\n', n + 1)) != string::npos)
+            usage.insert(n + 1, 28, ' ');
+          const string example = "--" + it.name + (it.default_value ? "=" + it.defined_value : "");
+          usage = '\n' + (
+            (!it.default_value and it.defined_value.at(0) > '>')
+              ? "-" + it.defined_value + ", "
+              : "    "
+          ) + example + string(22 - example.length(), ' ')
+            + "- " + usage;
+          n = 0;
+          do usage.insert(n + 1, Ansi::b(COLOR_WHITE) + stamp.at(((++y%4)*3)+x) + Ansi::r(COLOR_WHITE));
+          while ((n = usage.find('\n', n + 1)) != string::npos);
+          clog << usage << '.';
         }
         clog << '\n'
-          << Ansi::r(COLOR_GREEN) << "   more help: " << Ansi::r(COLOR_YELLOW) << "https://github.com/ctubio/Krypto-trading-bot/blob/master/doc/MANUAL.md" << '\n'
-          << Ansi::b(COLOR_GREEN) << " K" << Ansi::r(COLOR_GREEN) << " questions: " << Ansi::r(COLOR_YELLOW) << "irc://irc.freenode.net:6667/#tradingBot" << '\n'
-          << Ansi::r(COLOR_GREEN) << "   home page: " << Ansi::r(COLOR_YELLOW) << "https://ca.rles-tub.io./trades" << '\n'
+          << Ansi::r(COLOR_GREEN) << "  more help: " << Ansi::r(COLOR_YELLOW) << "https://github.com/ctubio/Krypto-trading-bot/blob/master/doc/MANUAL.md" << '\n'
+          << Ansi::b(COLOR_GREEN) << "K" << Ansi::r(COLOR_GREEN) << " questions: " << Ansi::r(COLOR_YELLOW) << "irc://irc.freenode.net:6667/#tradingBot" << '\n'
+          << Ansi::r(COLOR_GREEN) << "  home page: " << Ansi::r(COLOR_YELLOW) << "https://ca.rles-tub.io./trades" << '\n'
           << Ansi::reset();
       };
   };
@@ -790,17 +738,12 @@ namespace ₿ {
             return *(T*)this;
           };
           Report pull(const json &j) override {
-            from_json(j.empty() ? blob() : not_null(j.at(0)), *(T*)this);
+            from_json(j.empty() ? blob() : j.at(0), *(T*)this);
             return report(j.empty());
           };
         private:
           string explainOK() const override {
             return "loaded last % OK";
-          };
-          static json not_null(json j) {
-            for (auto it = j.begin(); it != j.end();)
-              if (it.value().is_null()) it = j.erase(it); else ++it;
-            return j;
           };
       };
       template <typename T> class VectorBackup: public Backup {
@@ -816,13 +759,19 @@ namespace ₿ {
           using reverse_iterator       = typename vector<T>::reverse_iterator;
           using const_reverse_iterator = typename vector<T>::const_reverse_iterator;
           iterator                 begin()       noexcept { return rows.begin();   };
+          const_iterator           begin() const noexcept { return rows.begin();   };
           const_iterator          cbegin() const noexcept { return rows.cbegin();  };
           iterator                   end()       noexcept { return rows.end();     };
-          const_iterator            cend() const noexcept { return rows.cend();    };
+          const_iterator             end() const noexcept { return rows.end();     };
           reverse_iterator        rbegin()       noexcept { return rows.rbegin();  };
           const_reverse_iterator crbegin() const noexcept { return rows.crbegin(); };
+          reverse_iterator          rend()       noexcept { return rows.rend();    };
           bool                     empty() const noexcept { return rows.empty();   };
           size_t                    size() const noexcept { return rows.size();    };
+          reference                front()                { return rows.front();   };
+          const_reference          front() const          { return rows.front();   };
+          reference                 back()                { return rows.back();    };
+          const_reference           back() const          { return rows.back();    };
           reference                   at(size_t n)        { return rows.at(n);     };
           const_reference             at(size_t n) const  { return rows.at(n);     };
           virtual void erase() {
@@ -840,20 +789,21 @@ namespace ₿ {
             return report(empty());
           };
           json blob() const override {
-            return rows.back();
+            return back();
           };
         private:
           string explain() const override {
             return to_string(size());
           };
       };
+    protected:
+      bool databases = false;
     private:
       sqlite3 *db = nullptr;
       string disk = "main";
       mutable vector<Backup*> tables;
     protected:
       void backups(const Option *const K) {
-        if (blackhole()) return;
         if (sqlite3_open(K->arg<string>("database").data(), &db))
           error("DB", sqlite3_errmsg(db));
         K->log("DB", "loaded OK from", K->arg<string>("database"));
@@ -876,11 +826,13 @@ namespace ₿ {
         }
         tables.clear();
       };
-      bool blackhole() const {
-        return tables.empty() and !db;
+      void blackhole() {
+        for (auto &it : tables)
+          it->push = nullptr;
+        tables.clear();
       };
     private:
-      json select(const Backup *const data) {
+      json select(Backup *const data) {
         const string table = schema(data);
         json result = json::array();
         exec(
@@ -891,7 +843,7 @@ namespace ₿ {
         );
         return result;
       };
-      void insert(const Backup *const data) {
+      void insert(Backup *const data) {
         const string table    = schema(data);
         const json   blob     = data->blob();
         const double limit    = data->limit();
@@ -912,7 +864,7 @@ namespace ₿ {
         );
         exec(sql);
       };
-      string schema(const Backup *const data) const {
+      string schema(Backup *const data) const {
         return (
           data->persist()
             ? disk
@@ -1149,11 +1101,10 @@ namespace ₿ {
             content = string(documents.at(path).first,
                              documents.at(path).second);
             if (leaf == "/") option->log("UI", "authorization success from", addr);
-            else if (leaf == "js")    type = "application/javascript; charset=UTF-8";
-            else if (leaf == "css")   type = "text/css; charset=UTF-8";
-            else if (leaf == "ico")   type = "image/x-icon";
-            else if (leaf == "mp3")   type = "audio/mpeg";
-            else if (leaf == "woff2") type = "font/woff2";
+            else if (leaf == "js")  type = "application/javascript; charset=UTF-8";
+            else if (leaf == "css") type = "text/css; charset=UTF-8";
+            else if (leaf == "ico") type = "image/x-icon";
+            else if (leaf == "mp3") type = "audio/mpeg";
           } else {
             if (Random::int64() % 21)
               code = 404, content = "Today, is a beautiful day.";
@@ -1170,7 +1121,7 @@ namespace ₿ {
       };
       WebServer::Upgrade upgrade = [&](const int &sum, const string &addr) {
         const int tentative = server.clients() + sum;
-        option->log("UI", to_string(tentative) + " client" + string(tentative != 1, 's')
+        option->log("UI", to_string(tentative) + " client" + string(tentative == 1 ? 0 : 1, 's')
           + (sum > 0 ? "" : " remain") + " connected, last connection was from", addr);
         if (tentative > option->arg<int>("client-limit")) {
           option->log("UI", "--client-limit=" + to_string(option->arg<int>("client-limit"))
@@ -1211,47 +1162,42 @@ namespace ₿ {
     public:
       Gw *gateway = nullptr;
     protected:
-      vector<variant<
-            TimeEvent,
-            QuitEvent,
-        Gw::DataEvent
-      >> events;
+      vector<variant<TimeEvent, Gw::DataEvent>> events;
     public:
       KryptoNinja *main(int argc, char** argv) {
         {
-          Option::main(this, argc, argv, events, blackhole(), documents.empty());
+          Option::main(this, argc, argv, databases, documents.empty());
           setup();
         } {
           if (windowed())
             wait_for_keylog(this);
         } {
           log("CF", "Outbound IP address is",
-            wtfismyip = Curl::Web::xfer("https://wtfismyip.com/json")
+            wtfismyip = Curl::Web::xfer("https://wtfismyip.com/json", 4L)
                           .value("YourFuckingIPAddress", wtfismyip)
           );
         } {
-          if (arg<int>("list"))
-            exit("CF " + Ansi::r(COLOR_WHITE) + gateway->pairs());
-          if (arg<int>("latency"))
-            exit("CF " + Ansi::r(COLOR_WHITE) + gateway->latency([&]() {
+          if (arg<int>("latency")) {
+            gateway->latency("HTTP read/write handshake", [&]() {
               handshake({
                 {"gateway", gateway->http}
               });
-            }));
+            });
+            exit("1 HTTP connection done" + Ansi::r(COLOR_WHITE)
+              + " (consider to repeat a few times this check)");
+          }
+        } {
+          for (const auto &it : events)
+            if (holds_alternative<Gw::DataEvent>(it))
+              gateway->data(get<Gw::DataEvent>(it));
         } {
           gateway->wait_for_data(this);
           timer_1s([&](const unsigned int &tick) {
             gateway->ask_for_data(tick);
           });
-          for (const auto &it : events)
-            if (holds_alternative<TimeEvent>(it))
-              timer_1s(get<TimeEvent>(it));
-            else if (holds_alternative<QuitEvent>(it))
-              ending(get<QuitEvent>(it));
-            else if (holds_alternative<Gw::DataEvent>(it))
-              gateway->data(get<Gw::DataEvent>(it));
-          events.clear();
           ending([&]() {
+            if (!dustybot)
+              gateway->purge(arg<int>("dustybot"));
             gateway->end();
             end();
           });
@@ -1264,7 +1210,14 @@ namespace ₿ {
                           : "no"           }
           });
         } {
-          backups(this);
+          for (const auto &it : events)
+            if (holds_alternative<TimeEvent>(it))
+              timer_1s(get<TimeEvent>(it));
+          events.clear();
+        } {
+          if (databases)
+            backups(this);
+          else blackhole();
         } {
           if (arg<int>("headless")) headless();
           else {
@@ -1290,7 +1243,7 @@ namespace ₿ {
         walk();
       };
       unsigned int dbSize() const {
-        if (blackhole() or arg<string>("database") == ":memory:") return 0;
+        if (!databases or arg<string>("database") == ":memory:") return 0;
         struct stat st;
         return stat(arg<string>("database").data(), &st) ? 0 : st.st_size;
       };
@@ -1308,7 +1261,7 @@ namespace ₿ {
         if (!gateway->tickPrice or !gateway->tickSize or !gateway->minSize)
           error("GW", "Unable to fetch data from " + gateway->exchange
             + " for symbols " + gateway->base + "/" + gateway->quote
-            + ", response was: " + reply.dump());
+            + ", possible error message: " + reply.dump());
         gateway->report(notes, arg<int>("nocache"));
       };
       void setup() {

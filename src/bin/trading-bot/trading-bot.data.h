@@ -13,7 +13,7 @@ namespace tribeca {
   };
   enum class QuoteState: unsigned int {
     Disconnected,  Live,             DisabledQuotes,
-    MissingData,   UnknownHeld,      WidthTooHigh,
+    MissingData,   UnknownHeld,      WidthMustBeSmaller,
     TBPHeld,       MaxTradesSeconds, WaitingPing,
     DepletedFunds, Crossed,
     UpTrendHeld,   DownTrendHeld
@@ -113,7 +113,6 @@ namespace tribeca {
     double           sopSizeMultiplier               = 2;
     double           sopTradesMultiplier             = 2;
     bool             cancelOrdersAuto                = false;
-    unsigned int     lifetime                        = 0;
     double           cleanPongsAuto                  = 0.0;
     double           profitHourInterval              = 0.5;
     bool             audio                           = false;
@@ -137,74 +136,74 @@ namespace tribeca {
           extraShortEwmaPeriods,
           ultraShortEwmaPeriods
         };
-        widthPing                       = fmax(K.gateway->tickPrice,   j.value("widthPing", widthPing));
-        widthPingPercentage             = fmin(1e+2, fmax(1e-3,        j.value("widthPingPercentage", widthPingPercentage)));
-        widthPong                       = fmax(K.gateway->tickPrice,   j.value("widthPong", widthPong));
-        widthPongPercentage             = fmin(1e+2, fmax(1e-3,        j.value("widthPongPercentage", widthPongPercentage)));
-        widthPercentage                 =                              j.value("widthPercentage", widthPercentage);
-        bestWidth                       =                              j.value("bestWidth", bestWidth);
-        bestWidthSize                   = fmax(0,                      j.value("bestWidthSize", bestWidthSize));
-        orderPctTotal                   =                              j.value("orderPctTotal", orderPctTotal);
-        tradeSizeTBPExp                 =                              j.value("tradeSizeTBPExp", tradeSizeTBPExp);
-        buySize                         = fmax(K.gateway->minSize,     j.value("buySize", buySize));
-        buySizePercentage               = fmin(1e+2, fmax(1e-3,        j.value("buySizePercentage", buySizePercentage)));
-        buySizeMax                      =                              j.value("buySizeMax", buySizeMax);
-        sellSize                        = fmax(K.gateway->minSize,     j.value("sellSize", sellSize));
-        sellSizePercentage              = fmin(1e+2, fmax(1e-3,        j.value("sellSizePercentage", sellSizePercentage)));
-        sellSizeMax                     =                              j.value("sellSizeMax", sellSizeMax);
-        pingAt                          =                              j.value("pingAt", pingAt);
-        pongAt                          =                              j.value("pongAt", pongAt);
-        mode                            =                              j.value("mode", mode);
-        safety                          =                              j.value("safety", safety);
-        bullets                         = fmin(10, fmax(1,             j.value("bullets", bullets)));
-        range                           =                              j.value("range", range);
-        rangePercentage                 = fmin(1e+2, fmax(1e-3,        j.value("rangePercentage", rangePercentage)));
-        fvModel                         =                              j.value("fvModel", fvModel);
-        targetBasePosition              =                              j.value("targetBasePosition", targetBasePosition);
-        targetBasePositionPercentage    = fmin(1e+2, fmax(0,           j.value("targetBasePositionPercentage", targetBasePositionPercentage)));
-        targetBasePositionMin           =                              j.value("targetBasePositionMin", targetBasePositionMin);
-        targetBasePositionPercentageMin = fmin(1e+2, fmax(0,           j.value("targetBasePositionPercentageMin", targetBasePositionPercentageMin)));
-        targetBasePositionMax           =                              j.value("targetBasePositionMax", targetBasePositionMax);
-        targetBasePositionPercentageMax = fmin(1e+2, fmax(0,           j.value("targetBasePositionPercentageMax", targetBasePositionPercentageMax)));
-        positionDivergenceMin           =                              j.value("positionDivergenceMin", positionDivergenceMin);
-        positionDivergenceMode          =                              j.value("positionDivergenceMode", positionDivergenceMode);
-        positionDivergence              =                              j.value("positionDivergence", positionDivergence);
-        positionDivergencePercentage    = fmin(1e+2, fmax(0,           j.value("positionDivergencePercentage", positionDivergencePercentage)));
-        positionDivergencePercentageMin = fmin(1e+2, fmax(0,           j.value("positionDivergencePercentageMin", positionDivergencePercentageMin)));
-        percentageValues                =                              j.value("percentageValues", percentageValues);
-        autoPositionMode                =                              j.value("autoPositionMode", autoPositionMode);
-        aggressivePositionRebalancing   =                              j.value("aggressivePositionRebalancing", aggressivePositionRebalancing);
-        superTrades                     =                              j.value("superTrades", superTrades);
-        tradesPerMinute                 = fmax(0,                      j.value("tradesPerMinute", tradesPerMinute));
-        tradeRateSeconds                = fmax(0,                      j.value("tradeRateSeconds", tradeRateSeconds));
-        protectionEwmaWidthPing         =                              j.value("protectionEwmaWidthPing", protectionEwmaWidthPing);
-        protectionEwmaQuotePrice        =                              j.value("protectionEwmaQuotePrice", protectionEwmaQuotePrice);
-        protectionEwmaPeriods           = fmax(1,                      j.value("protectionEwmaPeriods", protectionEwmaPeriods));
-        quotingStdevProtection          =                              j.value("quotingStdevProtection", quotingStdevProtection);
-        quotingStdevBollingerBands      =                              j.value("quotingStdevBollingerBands", quotingStdevBollingerBands);
-        quotingStdevProtectionFactor    =                              j.value("quotingStdevProtectionFactor", quotingStdevProtectionFactor);
-        quotingStdevProtectionPeriods   = fmax(1,                      j.value("quotingStdevProtectionPeriods", quotingStdevProtectionPeriods));
-        ewmaSensiblityPercentage        =                              j.value("ewmaSensiblityPercentage", ewmaSensiblityPercentage);
-        quotingEwmaTrendProtection      =                              j.value("quotingEwmaTrendProtection", quotingEwmaTrendProtection);
-        quotingEwmaTrendThreshold       =                              j.value("quotingEwmaTrendThreshold", quotingEwmaTrendThreshold);
-        veryLongEwmaPeriods             = fmax(1,                      j.value("veryLongEwmaPeriods", veryLongEwmaPeriods));
-        longEwmaPeriods                 = fmax(1,                      j.value("longEwmaPeriods", longEwmaPeriods));
-        mediumEwmaPeriods               = fmax(1,                      j.value("mediumEwmaPeriods", mediumEwmaPeriods));
-        shortEwmaPeriods                = fmax(1,                      j.value("shortEwmaPeriods", shortEwmaPeriods));
-        extraShortEwmaPeriods           = fmax(1,                      j.value("extraShortEwmaPeriods", extraShortEwmaPeriods));
-        ultraShortEwmaPeriods           = fmax(1,                      j.value("ultraShortEwmaPeriods", ultraShortEwmaPeriods));
-        aprMultiplier                   =                              j.value("aprMultiplier", aprMultiplier);
-        sopWidthMultiplier              =                              j.value("sopWidthMultiplier", sopWidthMultiplier);
-        sopSizeMultiplier               =                              j.value("sopSizeMultiplier", sopSizeMultiplier);
-        sopTradesMultiplier             =                              j.value("sopTradesMultiplier", sopTradesMultiplier);
-        cancelOrdersAuto                =                              j.value("cancelOrdersAuto", cancelOrdersAuto);
-        lifetime                        = fmax(K.arg<int>("lifetime"), j.value("lifetime", lifetime));
-        cleanPongsAuto                  =                              j.value("cleanPongsAuto", cleanPongsAuto);
-        profitHourInterval              =                              j.value("profitHourInterval", profitHourInterval);
-        audio                           =                              j.value("audio", audio);
-        delayUI                         = fmax(0,                      j.value("delayUI", delayUI));
+        widthPing                       = fmax(K.gateway->tickPrice, j.value("widthPing", widthPing));
+        widthPingPercentage             = fmin(1e+2, fmax(1e-3,      j.value("widthPingPercentage", widthPingPercentage)));
+        widthPong                       = fmax(K.gateway->tickPrice, j.value("widthPong", widthPong));
+        widthPongPercentage             = fmin(1e+2, fmax(1e-3,      j.value("widthPongPercentage", widthPongPercentage)));
+        widthPercentage                 =                            j.value("widthPercentage", widthPercentage);
+        bestWidth                       =                            j.value("bestWidth", bestWidth);
+        bestWidthSize                   = fmax(0,                    j.value("bestWidthSize", bestWidthSize));
+        orderPctTotal                   =                            j.value("orderPctTotal", orderPctTotal);
+        tradeSizeTBPExp                 =                            j.value("tradeSizeTBPExp", tradeSizeTBPExp);
+        buySize                         = fmax(K.gateway->minSize,   j.value("buySize", buySize));
+        buySizePercentage               = fmin(1e+2, fmax(1e-3,      j.value("buySizePercentage", buySizePercentage)));
+        buySizeMax                      =                            j.value("buySizeMax", buySizeMax);
+        sellSize                        = fmax(K.gateway->minSize,   j.value("sellSize", sellSize));
+        sellSizePercentage              = fmin(1e+2, fmax(1e-3,      j.value("sellSizePercentage", sellSizePercentage)));
+        sellSizeMax                     =                            j.value("sellSizeMax", sellSizeMax);
+        pingAt                          =                            j.value("pingAt", pingAt);
+        pongAt                          =                            j.value("pongAt", pongAt);
+        mode                            =                            j.value("mode", mode);
+        safety                          =                            j.value("safety", safety);
+        bullets                         = fmin(10, fmax(1,           j.value("bullets", bullets)));
+        range                           =                            j.value("range", range);
+        rangePercentage                 = fmin(1e+2, fmax(1e-3,      j.value("rangePercentage", rangePercentage)));
+        fvModel                         =                            j.value("fvModel", fvModel);
+        targetBasePosition              =                            j.value("targetBasePosition", targetBasePosition);
+        targetBasePositionPercentage    = fmin(1e+2, fmax(0,         j.value("targetBasePositionPercentage", targetBasePositionPercentage)));
+        targetBasePositionMin           =                            j.value("targetBasePositionMin", targetBasePositionMin);
+        targetBasePositionPercentageMin = fmin(1e+2, fmax(0,         j.value("targetBasePositionPercentageMin", targetBasePositionPercentageMin)));
+        targetBasePositionMax           =                            j.value("targetBasePositionMax", targetBasePositionMax);
+        targetBasePositionPercentageMax = fmin(1e+2, fmax(0,         j.value("targetBasePositionPercentageMax", targetBasePositionPercentageMax)));
+        positionDivergenceMin           =                            j.value("positionDivergenceMin", positionDivergenceMin);
+        positionDivergenceMode          =                            j.value("positionDivergenceMode", positionDivergenceMode);
+        positionDivergence              =                            j.value("positionDivergence", positionDivergence);
+        positionDivergencePercentage    = fmin(1e+2, fmax(0,         j.value("positionDivergencePercentage", positionDivergencePercentage)));
+        positionDivergencePercentageMin = fmin(1e+2, fmax(0,         j.value("positionDivergencePercentageMin", positionDivergencePercentageMin)));
+        percentageValues                =                            j.value("percentageValues", percentageValues);
+        autoPositionMode                =                            j.value("autoPositionMode", autoPositionMode);
+        aggressivePositionRebalancing   =                            j.value("aggressivePositionRebalancing", aggressivePositionRebalancing);
+        superTrades                     =                            j.value("superTrades", superTrades);
+        tradesPerMinute                 = fmax(0,                    j.value("tradesPerMinute", tradesPerMinute));
+        tradeRateSeconds                = fmax(0,                    j.value("tradeRateSeconds", tradeRateSeconds));
+        protectionEwmaWidthPing         =                            j.value("protectionEwmaWidthPing", protectionEwmaWidthPing);
+        protectionEwmaQuotePrice        =                            j.value("protectionEwmaQuotePrice", protectionEwmaQuotePrice);
+        protectionEwmaPeriods           = fmax(1,                    j.value("protectionEwmaPeriods", protectionEwmaPeriods));
+        quotingStdevProtection          =                            j.value("quotingStdevProtection", quotingStdevProtection);
+        quotingStdevBollingerBands      =                            j.value("quotingStdevBollingerBands", quotingStdevBollingerBands);
+        quotingStdevProtectionFactor    =                            j.value("quotingStdevProtectionFactor", quotingStdevProtectionFactor);
+        quotingStdevProtectionPeriods   = fmax(1,                    j.value("quotingStdevProtectionPeriods", quotingStdevProtectionPeriods));
+        ewmaSensiblityPercentage        =                            j.value("ewmaSensiblityPercentage", ewmaSensiblityPercentage);
+        quotingEwmaTrendProtection      =                            j.value("quotingEwmaTrendProtection", quotingEwmaTrendProtection);
+        quotingEwmaTrendThreshold       =                            j.value("quotingEwmaTrendThreshold", quotingEwmaTrendThreshold);
+        veryLongEwmaPeriods             = fmax(1,                    j.value("veryLongEwmaPeriods", veryLongEwmaPeriods));
+        longEwmaPeriods                 = fmax(1,                    j.value("longEwmaPeriods", longEwmaPeriods));
+        mediumEwmaPeriods               = fmax(1,                    j.value("mediumEwmaPeriods", mediumEwmaPeriods));
+        shortEwmaPeriods                = fmax(1,                    j.value("shortEwmaPeriods", shortEwmaPeriods));
+        extraShortEwmaPeriods           = fmax(1,                    j.value("extraShortEwmaPeriods", extraShortEwmaPeriods));
+        ultraShortEwmaPeriods           = fmax(1,                    j.value("ultraShortEwmaPeriods", ultraShortEwmaPeriods));
+        aprMultiplier                   =                            j.value("aprMultiplier", aprMultiplier);
+        sopWidthMultiplier              =                            j.value("sopWidthMultiplier", sopWidthMultiplier);
+        sopSizeMultiplier               =                            j.value("sopSizeMultiplier", sopSizeMultiplier);
+        sopTradesMultiplier             =                            j.value("sopTradesMultiplier", sopTradesMultiplier);
+        cancelOrdersAuto                =                            j.value("cancelOrdersAuto", cancelOrdersAuto);
+        cleanPongsAuto                  =                            j.value("cleanPongsAuto", cleanPongsAuto);
+        profitHourInterval              =                            j.value("profitHourInterval", profitHourInterval);
+        audio                           =                            j.value("audio", audio);
+        delayUI                         = fmax(0,                    j.value("delayUI", delayUI));
         if (mode == QuotingMode::Depth)
           widthPercentage = false;
+        K.gateway->askForCancelAll = cancelOrdersAuto;
         K.timer_ticks_factor(delayUI);
         K.client_queue_delay(delayUI);
         if (_diffEwma == -1) _diffEwma++;
@@ -298,7 +297,6 @@ namespace tribeca {
       {              "sopSizeMultiplier", k.sopSizeMultiplier              },
       {            "sopTradesMultiplier", k.sopTradesMultiplier            },
       {               "cancelOrdersAuto", k.cancelOrdersAuto               },
-      {                       "lifetime", k.lifetime                       },
       {                 "cleanPongsAuto", k.cleanPongsAuto                 },
       {             "profitHourInterval", k.profitHourInterval             },
       {                          "audio", k.audio                          },
@@ -310,10 +308,10 @@ namespace tribeca {
   };
 
   struct LastOrder {
-     Price price;
+    Price  price;
     Amount filled;
-      Side side;
-      bool isPong;
+    Side   side;
+    bool   isPong;
   };
   struct Orders: public Client::Broadcast<Orders> {
     LastOrder updated;
@@ -378,18 +376,11 @@ namespace tribeca {
              sideOrders.push_back(&it.second);
         return sideOrders;
       };
-      vector<Order*> open() {
-        vector<Order*> autoOrders;
-        for (auto &it : orders)
-          if (!it.second.manual)
-            autoOrders.push_back(&it.second);
-        return autoOrders;
-      };
       vector<Order*> working() {
         vector<Order*> workingOrders;
         for (auto &it : orders)
           if (Status::Working == it.second.status
-            and !it.second.manual
+            and it.second.postOnly
           ) workingOrders.push_back(&it.second);
         return workingOrders;
       };
@@ -477,10 +468,10 @@ namespace tribeca {
   };
 
   struct MarketTakers: public Client::Broadcast<Trade> {
-    vector<Trade>  trades;
-            Amount takersBuySize60s  = 0,
-                   takersSellSize60s = 0;
     public:
+      vector<Trade>  trades;
+              Amount takersBuySize60s  = 0,
+                     takersSellSize60s = 0;
       MarketTakers(const KryptoNinja &bot)
         : Broadcast(bot)
       {};
@@ -516,10 +507,8 @@ namespace tribeca {
         : Broadcast(bot)
         , fairValue(f)
       {};
-      json to_json() const {
-        return {
-          {"price", fairValue}
-        };
+      Price currentPrice() const {
+        return fairValue;
       };
       mMatter about() const override {
         return mMatter::FairValue;
@@ -535,7 +524,9 @@ namespace tribeca {
       };
   };
   static void to_json(json &j, const FairLevelsPrice &k) {
-    j = k.to_json();
+    j = {
+      {"price", k.currentPrice()}
+    };
   };
 
   struct Stdev {
@@ -658,7 +649,7 @@ namespace tribeca {
   };
 
   struct Ewma: public Sqlite::StructBackup<Ewma>,
-               public Client::Clicked {
+                public Client::Clicked {
     mFairHistory fairValue96h;
            Price mgEwmaVL = 0,
                  mgEwmaL  = 0,
@@ -726,7 +717,7 @@ namespace tribeca {
         unsigned int n = fairValue96h.size();
         if (!n--) return;
         unsigned int x = 0;
-        *mean = fairValue96h.at(x);
+        *mean = fairValue96h.front();
         while (n--) calc(mean, periods, fairValue96h.at(++x));
         K.log("MG", "reloaded " + to_string(*mean) + " EWMA " + name);
       };
@@ -792,27 +783,29 @@ namespace tribeca {
   };
 
   struct MarketStats: public Client::Broadcast<MarketStats> {
-            Ewma ewma;
-          Stdevs stdev;
-    MarketTakers takerTrades;
-    public:
-      MarketStats(const KryptoNinja &bot, const Price &f, const QuotingParams &q)
-        : Broadcast(bot)
-        , ewma(bot, f, q)
-        , stdev(bot, f, q)
-        , takerTrades(bot)
-      {};
-      mMatter about() const override {
-        return mMatter::MarketChart;
-      };
-      bool realtime() const override {
-        return false;
-      };
+               Ewma ewma;
+             Stdevs stdev;
+    FairLevelsPrice fairPrice;
+       MarketTakers takerTrades;
+    MarketStats(const KryptoNinja &bot, const Price &f, const QuotingParams &q)
+      : Broadcast(bot)
+      , ewma(bot, f, q)
+      , stdev(bot, f, q)
+      , fairPrice(bot, f)
+      , takerTrades(bot)
+    {};
+    mMatter about() const override {
+      return mMatter::MarketChart;
+    };
+    bool realtime() const override {
+      return false;
+    };
   };
   static void to_json(json &j, const MarketStats &k) {
     j = {
       {          "ewma", k.ewma                         },
       {    "stdevWidth", k.stdev                        },
+      {     "fairValue", k.fairPrice.currentPrice()     },
       { "tradesBuySize", k.takerTrades.takersBuySize60s },
       {"tradesSellSize", k.takerTrades.takersSellSize60s}
     };
@@ -895,13 +888,12 @@ namespace tribeca {
       j["diff"] = true;
   };
   struct MarketLevels: public Levels {
-       unsigned int averageCount = 0;
-              Price averageWidth = 0,
-                    fairValue    = 0;
-             Levels unfiltered;
-         LevelsDiff diff;
-        MarketStats stats;
-    FairLevelsPrice fairPrice;
+    unsigned int averageCount = 0;
+           Price averageWidth = 0,
+                 fairValue    = 0;
+          Levels unfiltered;
+      LevelsDiff diff;
+     MarketStats stats;
     private:
       unordered_map<Price, Amount> filterBidOrders,
                                    filterAskOrders;
@@ -913,11 +905,16 @@ namespace tribeca {
       MarketLevels(const KryptoNinja &bot, const QuotingParams &q, const Orders &o)
         : diff(bot, unfiltered, q)
         , stats(bot, fairValue, q)
-        , fairPrice(bot, fairValue)
         , K(bot)
         , qp(q)
         , orders(o)
       {};
+      bool warn_empty() const {
+        const bool err = bids.empty() or asks.empty();
+        if (err and (float)clock()/CLOCKS_PER_SEC > 3.0)
+          K.logWar("QE", "Unable to calculate quote, missing market data");
+        return err;
+      };
       void timer_1s() {
         stats.stdev.timer_1s(bids.cbegin()->price, asks.cbegin()->price);
       };
@@ -944,15 +941,13 @@ namespace tribeca {
       };
       bool ready() {
         filter();
-        if (!fairValue and Tspent > 21e+3)
-          K.logWar("QE", "Unable to calculate quote, missing market data", 10e+3);
-        return fairValue;
+        return !(bids.empty() or asks.empty());
       };
       void read_from_gw(const Levels &raw) {
         unfiltered.bids = raw.bids;
         unfiltered.asks = raw.asks;
         filter();
-        if (fairPrice.broadcast()) K.repaint();
+        if (stats.fairPrice.broadcast()) K.repaint();
         diff.send_patch();
       };
     private:
@@ -1088,7 +1083,7 @@ namespace tribeca {
             feeCharged,
             Kqty,
             Kvalue,
-            delta;
+            Kdiff;
       Price Kprice;
       Clock Ktime;
        bool isPong,
@@ -1106,7 +1101,7 @@ namespace tribeca {
       {        "Kqty", k.Kqty        },
       {      "Kprice", k.Kprice      },
       {      "Kvalue", k.Kvalue      },
-      {       "delta", k.delta       },
+      {       "Kdiff", k.Kdiff       },
       {  "feeCharged", k.feeCharged  },
       {      "isPong", k.isPong      },
       {"loadedFromDB", k.loadedFromDB}
@@ -1123,9 +1118,7 @@ namespace tribeca {
     k.Kqty         = j.value("Kqty",       0.0);
     k.Kprice       = j.value("Kprice",     0.0);
     k.Kvalue       = j.value("Kvalue",     0.0);
-    k.delta        = j.value("delta",
-                       j.value("Kdiff",    0.0)
-                     );
+    k.Kdiff        = j.value("Kdiff",      0.0);
     k.feeCharged   = j.value("feeCharged", 0.0);
     k.isPong       = j.value("isPong",   false);
     k.loadedFromDB = true;
@@ -1142,7 +1135,6 @@ namespace tribeca {
       void click(const json &j) override {
         if (j.is_object() and j.value("price", 0.0) and j.value("quantity", 0.0)) {
           json order = j;
-          order["manual"]  = true;
           order["orderId"] = K.gateway->randId();
           K.clicked(this, order);
         }
@@ -1229,7 +1221,7 @@ namespace tribeca {
       };
   };
   struct Notepad: public Client::Broadcast<Notepad>,
-                  public Client::Clickable {
+                   public Client::Clickable {
     public:
       string content;
     public:
@@ -1303,9 +1295,8 @@ namespace tribeca {
           order.isPong,
           false
         };
-        const bool is_bid = order.side == Side::Bid;
-        K.log("GW " + K.gateway->exchange, string(order.isPong?"PONG":"PING") + " TRADE "
-          + (is_bid ? "BUY  " : "SELL ")
+        K.log("GW " + K.gateway->exchange, string(filled.isPong?"PONG":"PING") + " TRADE "
+          + (filled.side == Side::Bid ? "BUY  " : "SELL ")
           + K.gateway->decimal.amount.str(filled.quantity) + ' '
           + (K.gateway->margin == Future::Spot ? K.gateway->base : "Contracts") + " at price "
           + K.gateway->decimal.price.str(filled.price) + ' ' + K.gateway->quote + " (value "
@@ -1323,7 +1314,7 @@ namespace tribeca {
           for (OrderFilled &it : rows)
             if (it.quantity - it.Kqty > 0 and it.side != filled.side) {
               const Price combinedFee = K.gateway->makeFee * (it.price + filled.price);
-              if (is_bid
+              if (filled.side == Side::Bid
                   ? (it.price > filled.price + widthPong + combinedFee)
                   : (it.price < filled.price - widthPong - combinedFee)
               ) matches[it.price] = it.tradeId;
@@ -1332,8 +1323,8 @@ namespace tribeca {
             matches,
             filled,
             (qp.pongAt == PongAt::LongPingFair or qp.pongAt == PongAt::LongPingAggressive)
-              ? !is_bid
-              : is_bid
+              ? filled.side == Side::Ask
+              : filled.side == Side::Bid
           );
         }
         if (qp.cleanPongsAuto)
@@ -1423,7 +1414,7 @@ namespace tribeca {
           pong->quantity = pong->quantity - Kqty;
           pong->value = abs(pong->price*pong->quantity);
           if (it->quantity <= it->Kqty)
-            it->delta = ((it->quantity * it->price) - (it->Kqty * it->Kprice))
+            it->Kdiff = ((it->quantity * it->price) - (it->Kqty * it->Kprice))
                       * (it->side == Side::Ask ? 1 : -1);
           it->isPong = true;
           it->loadedFromDB = false;
@@ -1501,7 +1492,7 @@ namespace tribeca {
         return sum;
       };
       void expire(multimap<Price, RecentTrade> *const k) {
-        const Clock now = Tstamp;
+        Clock now = Tstamp;
         for (auto it = k->begin(); it != k->end();)
           if (it->second.time + qp.tradeRateSeconds * 1e+3 > now) ++it;
           else it = k->erase(it);
@@ -1730,11 +1721,7 @@ namespace tribeca {
         , baseValue(v)
       {};
       void calcTargetBasePos() {
-        if (!baseValue) {
-          if (Tspent > 21e+3)
-            K.logWar("QE", "Unable to calculate TBP, missing wallet data", 3e+3);
-          return;
-        }
+        if (warn_empty()) return;
         targetBasePosition = K.gateway->decimal.funds.round(
           qp.autoPositionMode == AutoPositionMode::Manual
             ? (qp.percentageValues
@@ -1749,6 +1736,15 @@ namespace tribeca {
           backup();
           if (K.arg<int>("debug-wallet")) report();
         }
+      };
+      bool warn_empty() const {
+        const bool err = empty();
+        if (err and (float)clock()/CLOCKS_PER_SEC > 3.0)
+          K.logWar("PG", "Unable to calculate TBP, missing wallet data");
+        return err;
+      };
+      bool empty() const {
+        return !baseValue;
       };
       bool realtime() const override {
         return false;
@@ -1779,7 +1775,7 @@ namespace tribeca {
         positionDivergence = K.gateway->decimal.funds.round(positionDivergence);
       };
       void report() const {
-        K.log("QE", "TBP: "
+        K.log("PG", "TBP: "
           + to_string((int)(targetBasePosition / baseValue * 1e+2)) + "% = " + K.gateway->decimal.funds.str(targetBasePosition)
           + " " + K.gateway->base + ", pDiv: "
           + to_string((int)(positionDivergence / baseValue * 1e+2)) + "% = " + K.gateway->decimal.funds.str(positionDivergence)
@@ -1803,9 +1799,8 @@ namespace tribeca {
     k.positionDivergence = j.value("pDiv", 0.0);
   };
 
-  struct Wallets: public Client::Broadcast<Wallets> {
-     Wallet base,
-            quote;
+  struct WalletPosition: public Wallets,
+                         public Client::Broadcast<WalletPosition> {
      Target target;
      Safety safety;
     Profits profits;
@@ -1814,7 +1809,7 @@ namespace tribeca {
       const Orders      &orders;
       const Price       &fairValue;
     public:
-      Wallets(const KryptoNinja &bot, const QuotingParams &q, const Orders &o, const Buttons &b, const MarketLevels &l)
+      WalletPosition(const KryptoNinja &bot, const QuotingParams &q, const Orders &o, const Buttons &b, const MarketLevels &l)
         : Broadcast(bot)
         , target(bot, q, l.stats.ewma.targetPositionAutoPercentage, base.value)
         , safety(bot, q, base, b, l.fairValue, target.targetBasePosition, target.positionDivergence)
@@ -1826,11 +1821,11 @@ namespace tribeca {
       bool ready() const {
         return !safety.empty();
       };
-      void read_from_gw(const Wallet &raw) {
-        if      (raw.currency == K.gateway->base)  base  = raw;
-        else if (raw.currency == K.gateway->quote) quote = raw;
-        if (base.currency.empty() or quote.currency.empty() or !fairValue) return;
-        calcMaxFunds();
+      void read_from_gw(const Wallets &raw) {
+        if (raw.base.currency.empty() or raw.quote.currency.empty() or !fairValue) return;
+        base.currency = raw.base.currency;
+        quote.currency = raw.quote.currency;
+        calcMaxFunds(raw, K.arg<double>("wallet-limit"));
         calcFunds();
       };
       void calcFunds() {
@@ -1845,7 +1840,7 @@ namespace tribeca {
         }
         if (orders.updated.filled) {
           safety.insertTrade(orders.updated);
-          K.gateway->balance();
+          K.gateway->askForFees = true;
         }
       };
       mMatter about() const override {
@@ -1869,10 +1864,10 @@ namespace tribeca {
       };
       void calcHeldAmount(const Side &side) {
         const Amount heldSide = orders.heldAmount(side);
-        if (side == Side::Ask)
-          base = {base.total - heldSide, heldSide, base.currency};
-        else if (side == Side::Bid)
-          quote = {quote.total - heldSide, heldSide, quote.currency};
+        if (side == Side::Ask and !base.currency.empty())
+          Wallet::reset(base.total - heldSide, heldSide, &base);
+        else if (side == Side::Bid and !quote.currency.empty())
+          Wallet::reset(quote.total - heldSide, heldSide, &quote);
       };
       void calcValues() {
         base.value  = K.gateway->margin == Future::Spot
@@ -1891,25 +1886,20 @@ namespace tribeca {
         base.profit  = profits.calcBaseDiff();
         quote.profit = profits.calcQuoteDiff();
       };
-      void calcMaxFunds() {
-        auto limit = K.arg<double>("wallet-limit");
+      void calcMaxFunds(Wallets raw, Amount limit) {
         if (limit) {
-          limit -= quote.held / fairValue;
-          if (limit > 0 and quote.amount / fairValue > limit) {
-            quote.amount = limit * fairValue;
-            base.amount = limit = 0;
-          } else limit -= quote.amount / fairValue;
-          limit -= base.held;
-          if (limit > 0 and base.amount > limit)
-            base.amount = limit;
+          limit -= raw.quote.held / fairValue;
+          if (limit > 0 and raw.quote.amount / fairValue > limit) {
+            raw.quote.amount = limit * fairValue;
+            raw.base.amount = limit = 0;
+          } else limit -= raw.quote.amount / fairValue;
+          limit -= raw.base.held;
+          if (limit > 0 and raw.base.amount > limit)
+            raw.base.amount = limit;
         }
+        Wallet::reset(raw.base.amount, raw.base.held, &base);
+        Wallet::reset(raw.quote.amount, raw.quote.held, &quote);
       };
-  };
-  static void to_json(json &j, const Wallets &k) {
-    j = {
-      { "base", k.base },
-      {"quote", k.quote}
-    };
   };
 
   struct Quote: public Level {
@@ -1968,16 +1958,14 @@ namespace tribeca {
       {};
       void checkCrossedQuotes() {
         if (bid.checkCrossed(ask) or ask.checkCrossed(bid))
-          K.logWar("QE", "Crossed bid/ask quotes detected, that is.. unexpected", 3e+3);
+          K.logWar("QE", "Crossed bid/ask quotes detected, that is.. unexpected");
       };
       void debug(const string &step) {
         if (K.arg<int>("debug-quotes"))
           K.log("DEBUG QE", "[" + step + "] "
-            + to_string((int)ask.state) + ":"
-            + to_string((int)bid.state) + " "
-            + to_string((int)ask.isPong) + ":"
-            + to_string((int)bid.isPong) + " "
-            + ((json){{"ask", ask}, {"bid", bid}}).dump()
+            + to_string((int)bid.state) + ":"
+            + to_string((int)ask.state) + " "
+            + ((json){{"bid", bid}, {"ask", ask}}).dump()
           );
       };
   };
@@ -1993,13 +1981,13 @@ namespace tribeca {
               Quotes&
       ) = nullptr;
     private_ref:
-      const KryptoNinja   &K;
-      const QuotingParams &qp;
-      const MarketLevels  &levels;
-      const Wallets       &wallet;
-            Quotes        &quotes;
+      const KryptoNinja    &K;
+      const QuotingParams  &qp;
+      const MarketLevels   &levels;
+      const WalletPosition &wallet;
+            Quotes         &quotes;
     public:
-      DummyMarketMaker(const KryptoNinja &bot, const QuotingParams &q, const MarketLevels &l, const Wallets &w, Quotes &Q)
+      DummyMarketMaker(const KryptoNinja &bot, const QuotingParams &q, const MarketLevels &l, const WalletPosition &w, Quotes &Q)
         : Clicked(bot, {
             {&q, [&]() { mode(); }}
           })
@@ -2010,8 +1998,6 @@ namespace tribeca {
         , quotes(Q)
       {};
       void calcRawQuotes() const  {
-        quotes.ask.isPong =
-        quotes.bid.isPong = false;
         calcRawQuotesFromMarket(
           levels,
           K.gateway->tickPrice,
@@ -2021,9 +2007,9 @@ namespace tribeca {
           quotes
         );
         if (quotes.bid.price <= 0 or quotes.ask.price <= 0) {
-          quotes.bid.clear(QuoteState::WidthTooHigh);
-          quotes.ask.clear(QuoteState::WidthTooHigh);
-          K.logWar("QP", "Negative price detected, widthPing must be lower", 3e+3);
+          quotes.bid.clear(QuoteState::WidthMustBeSmaller);
+          quotes.ask.clear(QuoteState::WidthMustBeSmaller);
+          K.logWar("QP", "Negative price detected, widthPing must be smaller");
         }
       };
     private:
@@ -2040,10 +2026,10 @@ namespace tribeca {
       static void quoteAtTopOfMarket(const MarketLevels &levels, const Price &tickPrice, Quotes &quotes) {
         const Level &topBid = levels.bids.begin()->size > tickPrice
           ? levels.bids.at(0)
-          : levels.bids.at(levels.bids.size() > 1);
+          : levels.bids.at(levels.bids.size() > 1 ? 1 : 0);
         const Level &topAsk = levels.asks.begin()->size > tickPrice
           ? levels.asks.at(0)
-          : levels.asks.at(levels.asks.size() > 1);
+          : levels.asks.at(levels.asks.size() > 1 ? 1 : 0);
         quotes.bid.price = topBid.price;
         quotes.ask.price = topAsk.price;
       };
@@ -2196,12 +2182,12 @@ namespace tribeca {
                           AK47inc      = 0;
                  SideAPR  sideAPR      = SideAPR::Off;
     private_ref:
-      const KryptoNinja   &K;
-      const QuotingParams &qp;
-      const MarketLevels  &levels;
-      const Wallets       &wallet;
+      const KryptoNinja    &K;
+      const QuotingParams  &qp;
+      const MarketLevels   &levels;
+      const WalletPosition &wallet;
     public:
-      AntonioCalculon(const KryptoNinja &bot, const QuotingParams &q, const MarketLevels &l, const Wallets &w)
+      AntonioCalculon(const KryptoNinja &bot, const QuotingParams &q, const MarketLevels &l, const WalletPosition &w)
         : Broadcast(bot)
         , quotes(bot)
         , dummyMM(bot, q, l, w, quotes)
@@ -2240,7 +2226,7 @@ namespace tribeca {
           } else if (qp.safety != QuotingSafety::AK47
             or quote.deprecates(order.price)
           ) {
-            if (qp.lifetime and order.time + qp.lifetime > Tstamp)
+            if (K.arg<int>("lifetime") and order.time + K.arg<int>("lifetime") > Tstamp)
               quote.skip();
             else return true;
           }
@@ -2269,7 +2255,7 @@ namespace tribeca {
           }
           ++countWaiting;
         } else ++countWorking;
-        return !order.manual;
+        return order.postOnly;
       };
       void applyQuotingParameters() {
         quotes.debug("?"); applySuperTrades();
@@ -2490,60 +2476,54 @@ namespace tribeca {
           );
       };
       void applyRoundSize() {
-        if (!quotes.bid.empty()) {
-          const Amount minBid = K.gateway->minValue
-            ? fmax(K.gateway->minSize, K.gateway->minValue / quotes.bid.price)
-            : K.gateway->minSize;
-          const Amount maxBid = K.gateway->margin == Future::Spot
-            ? wallet.quote.total / quotes.bid.price
-            : (K.gateway->margin == Future::Inverse
-                ? wallet.base.amount * quotes.bid.price
-                : wallet.base.amount / quotes.bid.price
-            );
+        if (!quotes.bid.empty())
           quotes.bid.size = K.gateway->decimal.amount.round(
-            fmax(minBid * (1.0 + K.gateway->takeFee * 1e+2), fmin(
+            fmax(K.gateway->minSize, fmin(
               quotes.bid.size,
-              K.gateway->decimal.amount.floor(maxBid)
+              K.gateway->decimal.amount.floor(
+                K.gateway->margin == Future::Spot
+                  ? wallet.quote.total / (quotes.bid.price * (1.0 + K.gateway->makeFee))
+                  : (K.gateway->margin == Future::Inverse
+                      ? wallet.base.total * quotes.bid.price
+                      : wallet.base.total / quotes.bid.price
+                  )
+              )
             ))
           );
-        }
-        if (!quotes.ask.empty()) {
-          const Amount minAsk = K.gateway->minValue
-            ? fmax(K.gateway->minSize, K.gateway->minValue / quotes.ask.price)
-            : K.gateway->minSize;
-          const Amount maxAsk = K.gateway->margin == Future::Spot
-            ? wallet.base.total
-            : (K.gateway->margin == Future::Inverse
-                ? (quotes.bid.empty()
-                  ? wallet.base.amount * quotes.ask.price
-                  : quotes.bid.size)
-                : wallet.base.amount / quotes.ask.price
-            );
+        if (!quotes.ask.empty())
           quotes.ask.size = K.gateway->decimal.amount.round(
-            fmax(minAsk * (1.0 + K.gateway->takeFee * 1e+2), fmin(
+            fmax(K.gateway->minSize, fmin(
               quotes.ask.size,
-              K.gateway->decimal.amount.floor(maxAsk)
+              K.gateway->decimal.amount.floor(
+                K.gateway->margin == Future::Spot
+                  ? wallet.base.total
+                  : (K.gateway->margin == Future::Inverse
+                      ? wallet.base.total * quotes.ask.price
+                      : wallet.base.total / quotes.ask.price
+                  )
+              )
             ))
           );
-        }
       };
       void applyDepleted() {
-        if (!quotes.bid.empty())
-          if ((K.gateway->margin == Future::Spot
-              ? wallet.quote.total / quotes.bid.price
-              : (K.gateway->margin == Future::Inverse
-                  ? wallet.base.amount * quotes.bid.price
-                  : wallet.base.amount / quotes.bid.price)
-              ) < quotes.bid.size
-          ) quotes.bid.clear(QuoteState::DepletedFunds);
-        if (!quotes.ask.empty())
-          if ((K.gateway->margin == Future::Spot
-              ? wallet.base.total
-              : (K.gateway->margin == Future::Inverse
-                  ? wallet.base.amount * quotes.ask.price
-                  : wallet.base.amount / quotes.ask.price)
-              ) < quotes.ask.size
-          ) quotes.ask.clear(QuoteState::DepletedFunds);
+        if (!quotes.bid.empty()
+          and (K.gateway->margin == Future::Spot
+                ? wallet.quote.total / quotes.bid.price
+                : (K.gateway->margin == Future::Inverse
+                    ? wallet.base.total * quotes.bid.price
+                    : wallet.base.total / quotes.bid.price
+                )
+          ) < K.gateway->minSize * (1.0 + K.gateway->makeFee)
+        ) quotes.bid.clear(QuoteState::DepletedFunds);
+        if (!quotes.ask.empty()
+          and (K.gateway->margin == Future::Spot
+                ? wallet.base.total
+                : (K.gateway->margin == Future::Inverse
+                    ? wallet.base.total * quotes.ask.price
+                    : wallet.base.total / quotes.ask.price
+                )
+          ) < K.gateway->minSize * (1.0 + K.gateway->makeFee)
+        ) quotes.ask.clear(QuoteState::DepletedFunds);
       };
       void applyWaitingPing() {
         if (qp.safety == QuotingSafety::Off) return;
@@ -2642,7 +2622,7 @@ namespace tribeca {
     };
   };
 
-  struct Product: public Client::Broadcast<Product> {
+  class Product: public Client::Broadcast<Product> {
     private_ref:
       const KryptoNinja &K;
     public:
@@ -2657,8 +2637,8 @@ namespace tribeca {
           {      "quote", K.gateway->quote                            },
           {     "symbol", K.gateway->symbol                           },
           {     "margin", K.gateway->margin                           },
-          {  "webMarket", K.gateway->web()                            },
-          {  "webOrders", K.gateway->web(true)                        },
+          {  "webMarket", K.gateway->webMarket                        },
+          {  "webOrders", K.gateway->webOrders                        },
           {  "tickPrice", K.gateway->decimal.price.stream.precision() },
           {   "tickSize", K.gateway->decimal.amount.stream.precision()},
           {  "stepPrice", K.gateway->decimal.price.step               },
@@ -2666,8 +2646,7 @@ namespace tribeca {
           {    "minSize", K.gateway->minSize                          },
           {       "inet", K.arg<string>("interface")                  },
           {"environment", K.arg<string>("title")                      },
-          { "matryoshka", K.arg<string>("matryoshka")                 },
-          {     "source", K_SOURCE " " K_BUILD                        }
+          { "matryoshka", K.arg<string>("matryoshka")                 }
         };
       };
       mMatter about() const override {
@@ -2678,7 +2657,7 @@ namespace tribeca {
     j = k.to_json();
   };
 
-  struct Memory: public Client::Broadcast<Memory> {
+  class Memory: public Client::Broadcast<Memory> {
     public:
       unsigned int orders_60s = 0;
     private:
@@ -2722,7 +2701,7 @@ namespace tribeca {
       const QuotingParams &qp;
             Orders        &orders;
     public:
-      Broker(const KryptoNinja &bot, const QuotingParams &q, Orders &o, const Buttons &b, const MarketLevels &l, const Wallets &w)
+      Broker(const KryptoNinja &bot, const QuotingParams &q, Orders &o, const Buttons &b, const MarketLevels &l, const WalletPosition &w)
         : Clicked(bot, {
             {&b.submit, [&](const json &j) { placeOrder(j); }},
             {&b.cancel, [&](const json &j) { cancelOrder(orders.find(j)); }},
@@ -2757,10 +2736,11 @@ namespace tribeca {
         const unsigned int replace = K.gateway->askForReplace and !(
           quote.empty() or abandoned.empty()
         );
-        for (
-          auto it  =  abandoned.end() - replace;
-               it --> abandoned.begin();
-          cancelOrder(*it)
+        for_each(
+          abandoned.begin(), abandoned.end() - replace,
+          [&](Order *const it) {
+            cancelOrder(it);
+          }
         );
         if (quote.empty()) return;
         if (replace)
@@ -2778,19 +2758,6 @@ namespace tribeca {
       void purge() {
         for (const Order *const it : calculon.purge())
           orders.purge(it);
-      };
-      void nuke() {
-        cancelOrders();
-        K.gateway->cancel();
-      };
-      void quit() {
-        unsigned int n = 0;
-        for (Order *const it : orders.open()) {
-          K.gateway->cancel(it);
-          n++;
-        }
-        if (n)
-          K.log("QE", "Canceled " + to_string(n) + " open order" + string(n != 1, 's') + " before quit");
       };
     private:
       vector<Order*> abandon(Quote &quote) {
@@ -2821,12 +2788,12 @@ namespace tribeca {
 
   class Engine {
     public:
-      QuotingParams qp;
-             Orders orders;
-            Buttons button;
-       MarketLevels levels;
-            Wallets wallet;
-             Broker broker;
+       QuotingParams qp;
+              Orders orders;
+             Buttons button;
+        MarketLevels levels;
+      WalletPosition wallet;
+              Broker broker;
     private_ref:
       const KryptoNinja &K;
     public:
@@ -2843,7 +2810,7 @@ namespace tribeca {
       void read(const Connectivity &rawdata) {
         broker.semaphore.read_from_gw(rawdata);
       };
-      void read(const Wallet &rawdata) {
+      void read(const Wallets &rawdata) {
         wallet.read_from_gw(rawdata);
       };
       void read(const Levels &rawdata) {
@@ -2859,10 +2826,7 @@ namespace tribeca {
         levels.stats.takerTrades.read_from_gw(rawdata);
       };
       void timer_1s(const unsigned int &tick) {
-        if (levels.ready()) {
-          if (qp.cancelOrdersAuto
-            and !(tick % 300)
-          ) broker.nuke();
+        if (K.gateway->connected() and !levels.warn_empty()) {
           levels.timer_1s();
           if (!(tick % 60)) {
             levels.timer_60s();
@@ -2871,9 +2835,6 @@ namespace tribeca {
           wallet.safety.timer_1s();
           calcQuotes();
         }
-      };
-      void quit() {
-        broker.quit();
       };
     private:
       void calcQuotes() {

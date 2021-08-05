@@ -1,0 +1,11 @@
+/*
+!/doc
+!/etc
+!/src
+!/test
+!/.gitignore
+!/.travis.yml
+!/COPYING
+!/LICENSE
+!/Makefile
+!/README.md
