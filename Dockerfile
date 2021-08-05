@@ -5,7 +5,7 @@ RUN apt-get update \
     && apt-get install --no-install-recommends -y git sudo make ca-certificates curl g++
 
 # Feel free to choose the branch you want to build:
-RUN git clone -b master https://github.com/AlexEAA/bot.git /K
+RUN git clone -b main https://github.com/AlexEAA/bot.git /K
 
 WORKDIR /K
 
